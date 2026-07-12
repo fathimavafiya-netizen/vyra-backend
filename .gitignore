@@ -1,0 +1,45 @@
+# Dependencies
+node_modules/
+jspm_packages/
+web_modules/
+
+# Production build outputs
+dist/
+build/
+
+# Local env files (Contains sensitive keys & secrets)
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Databases & SQLite
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+prisma/dev.db
+prisma/dev.db-journal
+
+# User uploads & media processing storage
+uploads/*
+!uploads/.gitkeep
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# OS specific files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
