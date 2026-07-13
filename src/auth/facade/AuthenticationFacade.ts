@@ -137,6 +137,7 @@ export class AuthenticationFacade {
         mfaEnabled: user.mfaEnabled,
         isAdminSession: isAdmin,
       },
+      isNewUser: isNewRegistration,
       ...sessionDetails,
     };
   }

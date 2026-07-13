@@ -5,6 +5,12 @@ import notificationService from './NotificationService';
 
 export class UserService {
   async getProfile(userId: string) {
+    const cacheKey = `user_profile:${userId}`;
+    const cachedProfile = await cache.get(cacheKey);
+    if (cachedProfile) {
+      return cachedProfile;
+    }
+
     const user = await userRepository.findById(userId);
     if (!user) throw new Error('User not found');
 
@@ -16,7 +22,7 @@ export class UserService {
       include: { sender: { include: { profile: true } } }
     });
 
-    return {
+    const profileData = {
       id: user.id,
       name: user.profile!.name,
       username: user.profile!.username,
@@ -38,6 +44,9 @@ export class UserService {
         createdAt: r.createdAt
       }))
     };
+
+    await cache.set(cacheKey, profileData, 300); // 5 minutes TTL
+    return profileData;
   }
 
   async getProfileByUsername(username: string) {
