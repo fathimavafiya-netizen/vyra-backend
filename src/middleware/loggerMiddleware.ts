@@ -18,13 +18,27 @@ export const loggerMiddleware = (req: CustomRequest, res: Response, next: NextFu
     userAgent: req.get('user-agent'),
   });
 
+  // Capture response body so error details appear in Render logs
+  let responseBody: any;
+  const originalJson = res.json.bind(res);
+  res.json = (body: any) => {
+    responseBody = body;
+    return originalJson(body);
+  };
+
   res.on('finish', () => {
     const duration = req.startTime ? Date.now() - req.startTime : 0;
+    const isError = res.statusCode >= 400;
+
     logger.info({
       msg: `Request Completed: ${req.method} ${req.originalUrl} - Status ${res.statusCode}`,
       requestId: reqId,
       statusCode: res.statusCode,
       durationMs: duration,
+      // Log error body so we can diagnose 400/500 responses in Render logs
+      ...(isError && responseBody
+        ? { errorCode: responseBody.code, errorMessage: responseBody.message }
+        : {}),
     });
   });
 

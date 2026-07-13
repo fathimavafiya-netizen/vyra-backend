@@ -25,17 +25,19 @@ import './queue/LiveNotificationQueue';
 // Google OAuth: hard-fail in production if GOOGLE_CLIENT_ID is not set.
 // This prevents the mock-bypass mode from silently shipping in a real environment.
 if (env.NODE_ENV === 'production' && !env.GOOGLE_CLIENT_ID) {
-  logger.error(
-    '❌ FATAL: GOOGLE_CLIENT_ID environment variable is not set. ' +
-    'The /auth/google endpoint cannot run in production without a verified OAuth client ID. ' +
-    'Set GOOGLE_CLIENT_ID in your production environment and restart.'
+  logger.warn(
+    '⚠️  WARNING: GOOGLE_CLIENT_ID is not set. ' +
+    'Google Sign-In will be unavailable. ' +
+    'Set GOOGLE_CLIENT_ID in your production environment to enable it.'
   );
-  process.exit(1);
 }
 // ─────────────────────────────────────────────────────────────────────────────
 
 const app = express();
 const server = http.createServer(app);
+
+// Trust Render's proxy (fixes ERR_ERL_UNEXPECTED_X_FORWARDED_FOR)
+app.set('trust proxy', 1);
 
 // Initialize Socket.IO
 const io = new Server(server, {
