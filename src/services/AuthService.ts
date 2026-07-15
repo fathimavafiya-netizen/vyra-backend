@@ -100,67 +100,9 @@ export class AuthService {
       return newUser;
     });
 
-    // 5. Enforce Session Limits (evict oldest active session if limit exceeded)
-    const activeSessions = await prisma.session.findMany({
-      where: { userId: user.id, isValid: true },
-      orderBy: { lastActive: 'asc' },
-    });
-
-    if (activeSessions.length >= env.MAX_ACTIVE_SESSIONS) {
-      const oldest = activeSessions[0];
-      await prisma.session.update({
-        where: { id: oldest.id },
-        data: { isValid: false },
-      });
-      await logAuditEvent({
-        userId: user.id,
-        action: 'SESSION_REVOKED',
-        severity: 'WARNING',
-        status: `EVICTED_MAX_SESSIONS_LIMIT_REACHED`,
-        ipAddress: data.ipAddress,
-        deviceId: data.deviceId,
-        userAgent: data.userAgent,
-      });
-    }
-
-    // 6. Create Session
-    const familyId = randomUUID();
-    const session = await prisma.session.create({
-      data: {
-        userId: user.id,
-        refreshTokenHash: 'PENDING_HASH',
-        deviceId: data.deviceId,
-        deviceName: data.deviceName,
-        platform: data.platform,
-        appVersion: data.appVersion,
-        ipAddress: data.ipAddress,
-        userAgent: data.userAgent,
-        familyId,
-        expiresAt: new Date(Date.now() + (data.rememberDevice ? env.TRUSTED_DEVICE_DAYS : 7) * 24 * 60 * 60 * 1000),
-      },
-    });
-
-    const accessToken = generateAccessToken(user.id, user.role, session.id, 1);
-    const refreshToken = generateRefreshToken(user.id, session.id);
-    const refreshTokenHash = hashToken(refreshToken);
-
-    await prisma.session.update({
-      where: { id: session.id },
-      data: { refreshTokenHash },
-    });
-
-    await logAuditEvent({
-      userId: user.id,
-      action: 'LOGIN_SUCCESS',
-      severity: 'INFO',
-      status: 'USER_REGISTERED_OTP',
-      ipAddress: data.ipAddress,
-      deviceId: data.deviceId,
-      userAgent: data.userAgent,
-    });
-    await incrementMetric('login_success');
-
     return {
+      success: true,
+      message: "Registration successful. Please log in.",
       user: {
         id: user.id,
         name: user.profile!.name,
@@ -173,10 +115,7 @@ export class AuthService {
         role: user.role,
         isVerified: user.isVerified,
         mfaEnabled: user.mfaEnabled,
-      },
-      accessToken,
-      refreshToken,
-      sessionId: session.id,
+      }
     };
   }
 

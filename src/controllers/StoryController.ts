@@ -101,35 +101,8 @@ export class StoryController {
 
       // Strip query parameters from URL before extracting basename
       const urlWithoutQuery = mediaUrl.split('?')[0];
-      const urlParts = urlWithoutQuery.split('/uploads/');
-      const relativeName = urlParts.length > 1 ? urlParts[1] : path.basename(urlWithoutQuery);
-      const tempFilePath = path.join(process.cwd(), 'uploads', relativeName);
-
-      // Verify file exists, otherwise fetch/write valid staging image buffer
-      if (!fs.existsSync(tempFilePath)) {
-        const dir = path.dirname(tempFilePath);
-        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-        
-        let fileBuffer: Buffer | null = null;
-        if (mediaUrl.startsWith('http://') || mediaUrl.startsWith('https://')) {
-          try {
-            const fetchRes = await fetch(mediaUrl);
-            if (fetchRes.ok) {
-              const arrayBuffer = await fetchRes.arrayBuffer();
-              fileBuffer = Buffer.from(arrayBuffer);
-            }
-          } catch (e: any) {
-            logger.warn(`[StoryController] Failed to download remote story mediaUrl: ${mediaUrl}. Error: ${e.message}`);
-          }
-        }
-        
-        if (!fileBuffer) {
-          // Fallback to valid 1x1 transparent PNG instead of Buffer.alloc(100)
-          fileBuffer = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=', 'base64');
-        }
-        
-        await fs.promises.writeFile(tempFilePath, fileBuffer);
-      }
+      const urlParts = urlWithoutQuery.split('/');
+      const relativeName = urlParts[urlParts.length - 1];
 
       const mimeType = mediaType === 'VIDEO' ? 'video/mp4' : 'image/jpeg';
 
@@ -137,7 +110,7 @@ export class StoryController {
       await queueManager.addJob('media_processing', {
         storyId: story.id,
         userId,
-        tempFilePath,
+        mediaUrl,
         originalName: relativeName,
         mimeType,
         caption

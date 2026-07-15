@@ -2,15 +2,10 @@ import sharp from 'sharp';
 import ffmpeg from 'fluent-ffmpeg';
 import path from 'path';
 import fs from 'fs';
-import { LocalStorageProvider, StorageProvider } from './StorageProvider';
+import storageProvider from '../security/StorageProvider';
 
 class UploadService {
-  private storage: StorageProvider;
-  private uploadDir: string;
-
   constructor() {
-    this.storage = new LocalStorageProvider();
-    this.uploadDir = path.join(__dirname, '..', '..', 'uploads');
   }
 
   /**
@@ -50,7 +45,7 @@ class UploadService {
       .webp({ quality: 80 })
       .toBuffer();
 
-    return this.storage.saveFile(processedBuffer, filename, 'image/webp');
+    return storageProvider.uploadFile(filename, processedBuffer, 'image/webp');
   }
 
   /**
@@ -62,36 +57,18 @@ class UploadService {
   ): Promise<{ videoUrl: string; thumbnailUrl: string }> {
     const baseName = `processed_${Date.now()}_${path.parse(originalName).name}`;
     const videoFilename = `${baseName}.mp4`;
-    const thumbnailFilename = `thumb_${baseName}.jpg`;
 
     // Save the raw video file using our storage provider
-    const videoUrl = await this.storage.saveFile(videoBuffer, videoFilename, 'video/mp4');
+    const videoUrl = await storageProvider.uploadFile(videoFilename, videoBuffer, 'video/mp4');
 
-    // Attempt to generate a thumbnail frame using fluent-ffmpeg with a graceful fallback
-    const tempVideoPath = path.join(this.uploadDir, videoFilename);
-    const tempThumbPath = path.join(this.uploadDir, thumbnailFilename);
-
+    // Cloudinary automatically generates thumbnails for videos by changing the extension to .jpg
+    // Example: https://res.cloudinary.com/demo/video/upload/v1234/dog.mp4 -> dog.jpg
     let thumbnailUrl = 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe'; // Default fallback thumbnail
-
-    try {
-      await new Promise<void>((resolve, reject) => {
-        ffmpeg(tempVideoPath)
-          .screenshots({
-            timestamps: ['1'],
-            filename: thumbnailFilename,
-            folder: this.uploadDir,
-            size: '320x240'
-          })
-          .on('end', () => resolve())
-          .on('error', (err) => reject(err));
-      });
-
-      if (fs.existsSync(tempThumbPath)) {
-        const baseUrl = process.env.BASE_URL || 'http://localhost:5000';
-        thumbnailUrl = `${baseUrl}/uploads/${thumbnailFilename}`;
-      }
-    } catch (ffmpegErr) {
-      console.warn('FFmpeg not available or failed. Falling back to default video thumbnail.', ffmpegErr);
+    
+    if (videoUrl.includes('res.cloudinary.com')) {
+      const urlParts = videoUrl.split('.');
+      urlParts.pop(); // remove .mp4
+      thumbnailUrl = `${urlParts.join('.')}.jpg`;
     }
 
     return { videoUrl, thumbnailUrl };

@@ -3,6 +3,7 @@ import { MediaType } from '../repositories/PostRepository';
 import uploadService from './UploadService';
 import fs from 'fs';
 import path from 'path';
+import storageProvider from '../security/StorageProvider';
 
 export class StoryService {
   // ─── Stories ────────────────────────────────────────────────────────────────
@@ -58,20 +59,13 @@ export class StoryService {
 
   async deleteStory(storyId: string, userId: string) {
     const story = await storyRepository.deleteStory(storyId, userId);
-    // Perform disk file cleanup if local mediaUrl exists
+    // Perform cloud cleanup
     if (story && story.media && story.media.length > 0) {
       for (const m of story.media) {
         if (m.url) {
-          const urlParts = m.url.split('/uploads/');
-          const filename = urlParts.length > 1 ? urlParts[1] : path.basename(m.url);
-          const filePath = path.join(process.cwd(), 'uploads', filename);
-          if (fs.existsSync(filePath)) {
-            try {
-              fs.unlinkSync(filePath);
-            } catch (err: any) {
-              console.error(`[StoryService] Failed to delete file ${filePath}: ${err.message}`);
-            }
-          }
+          await storageProvider.deleteFile(m.url).catch(err => {
+            console.error(`[StoryService] Failed to delete file ${m.url}: ${err.message}`);
+          });
         }
       }
     }

@@ -5,7 +5,7 @@ import prisma from '../config/db';
 import logger from '../utils/logger';
 
 // Path to log permanently failed jobs (DLQ)
-const DLQ_PATH = path.join(process.cwd(), 'uploads', 'dlq_push_notifications.json');
+const DLQ_PATH = path.join(process.cwd(), 'logs', 'dlq_push_notifications.json');
 
 export class PushNotificationQueue {
   constructor() {

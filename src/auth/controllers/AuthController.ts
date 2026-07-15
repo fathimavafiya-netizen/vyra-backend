@@ -615,25 +615,10 @@ export class AuthController {
         });
       }
 
-      // Delegate to facade to create session & tokens
-      const result = await authenticationFacade.loginOrRegister({
-        email: cleanEmail || undefined,
-        mobile: cleanEmail ? undefined : (cleanMobile || undefined),
-        deviceId,
-        deviceName,
-        platform,
-        appVersion,
-        ipAddress: req.ip || 'unknown',
-        userAgent: req.get('user-agent') || 'unknown',
-        rememberDevice: !!rememberDevice,
-        pushToken,
-      });
-
-      setAuthCookies(res, result.accessToken, result.refreshToken, !!rememberDevice);
-
+      // Auto-login removed. Require explicit login step.
       return res.status(200).json({
         success: true,
-        message: 'Registered successfully.',
+        message: 'Registration successful. Please log in.',
         data: {
           user: {
             id: user.id,
@@ -645,10 +630,8 @@ export class AuthController {
             profilePic: user.profile?.profilePic,
             role: user.role,
             isVerified: user.isVerified,
-          },
-          accessToken: result.accessToken,
-          refreshToken: result.refreshToken,
-        },
+          }
+        }
       });
     } catch (e: any) {
       logger.error(`Register error: ${e.message}`);

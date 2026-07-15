@@ -217,11 +217,7 @@ export class StoryFeedService {
       for (const story of group.stories) {
         for (const variant of story.variants) {
           // If the URL is absolute local path, sign it using the local provider signature
-          const urlParts = variant.url.split('/uploads/');
-          if (urlParts.length > 1) {
-            const relativePath = urlParts[1].split('?')[0]; // strip old signatures
-            variant.url = await storageProvider.getSignedUrl(relativePath);
-          }
+          variant.url = await storageProvider.getSignedUrl(variant.url);
         }
         // Map mediaUrl to the "original" variant for client compatibility
         const originalVariant = story.variants.find((v: any) => v.resolution === 'original') || story.variants[0];

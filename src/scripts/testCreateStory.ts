@@ -30,18 +30,12 @@ async function test() {
   });
   console.log(`Created PENDING story: ${story.id}`);
 
-  // Create a mock uploads directory and temp file if not exists
-  const tempFilePath = path.join(process.cwd(), 'uploads', 'test-story-image.jpg');
-  const dir = path.dirname(tempFilePath);
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-  await fs.promises.writeFile(tempFilePath, Buffer.alloc(100));
-
   // 3. Add job to queue
   console.log('Adding media_processing job to queue...');
   await queueManager.addJob('media_processing', {
     storyId: story.id,
     userId: user.id,
-    tempFilePath,
+    mediaUrl: 'https://res.cloudinary.com/demo/image/upload/sample.jpg',
     originalName: 'test-story-image.jpg',
     mimeType: 'image/jpeg',
     caption: 'Integration test story'

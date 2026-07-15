@@ -150,7 +150,7 @@ app.get('/docs', (req, res) => {
 app.use('/api/v1', v1Router);
 
 // Serve uploads statically
-app.use('/uploads', express.static('uploads'));
+// (Uploads are now served directly from Cloudinary)
 
 // Status Endpoint
 app.get('/', (req, res) => {

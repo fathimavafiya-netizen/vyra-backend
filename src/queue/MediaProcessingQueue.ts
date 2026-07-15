@@ -18,27 +18,42 @@ export class MediaProcessingQueue {
     queueManager.registerWorker('media_processing', async (payload: {
       storyId: string;
       userId: string;
-      tempFilePath: string;
+      mediaUrl: string;
       originalName: string;
       mimeType: string;
       caption?: string;
     }) => {
-      const { storyId, userId, tempFilePath, originalName, mimeType, caption } = payload;
+      const { storyId, userId, mediaUrl, originalName, mimeType, caption } = payload;
       logger.info(`[MediaProcessingQueue] Processing story media for story: ${storyId}`);
 
       try {
-        // 1. Run Malware Scan
-        const scanResult = await malwareScanner.scanFile(tempFilePath);
+        // Fetch the remote mediaUrl into a buffer
+        let buffer: Buffer | null = null;
+        try {
+          const fetchRes = await fetch(mediaUrl);
+          if (fetchRes.ok) {
+            const arrayBuffer = await fetchRes.arrayBuffer();
+            buffer = Buffer.from(arrayBuffer);
+          } else {
+             logger.warn(`[MediaProcessingQueue] Fetch failed for ${mediaUrl} with status ${fetchRes.status}`);
+          }
+        } catch (fetchErr: any) {
+          logger.warn(`[MediaProcessingQueue] Fetch error for ${mediaUrl}: ${fetchErr.message}`);
+        }
+
+        if (!buffer) {
+           // Fallback image if download completely fails
+           buffer = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=', 'base64');
+        }
+
+        // 1. Run Malware Scan on Buffer
+        const scanResult = await malwareScanner.scanBuffer(buffer);
         if (!scanResult.clean) {
           logger.warn(`[MediaProcessingQueue] Malware detected! Quarantining story: ${storyId}. Reason: ${scanResult.reason}`);
           await prisma.story.update({
             where: { id: storyId },
             data: { moderation: 'BLOCKED', deleteReason: `Malware scanned: ${scanResult.reason}` }
           });
-          // Cleanup
-          if (fs.existsSync(tempFilePath)) {
-            await fs.promises.unlink(tempFilePath);
-          }
           await storyFeedService.invalidateCache(userId);
           await eventBus.publish('story.moderated', { storyId, userId, status: 'BLOCKED' });
           return true; // Mark job done (quarantined)
@@ -59,21 +74,18 @@ export class MediaProcessingQueue {
             where: { id: storyId },
             data: { moderation: 'BLOCKED', deleteReason: blockReason }
           });
-          if (fs.existsSync(tempFilePath)) {
-            await fs.promises.unlink(tempFilePath);
-          }
           await storyFeedService.invalidateCache(userId);
           await eventBus.publish('story.moderated', { storyId, userId, status: 'BLOCKED' });
           return true;
         }
 
-        // Read staging buffer (with beautiful brand gradient fallback if format is invalid)
-        let buffer: Buffer;
+        // Verify image with sharp
         try {
-          buffer = await fs.promises.readFile(tempFilePath);
-          await sharp(buffer).metadata(); // Check if valid
+          if (mimeType.startsWith('image/')) {
+            await sharp(buffer).metadata(); // Check if valid
+          }
         } catch (sharpErr: any) {
-          logger.warn(`[MediaProcessingQueue] Staging file ${tempFilePath} is invalid: ${sharpErr.message}. Trying to download brand placeholder.`);
+          logger.warn(`[MediaProcessingQueue] Invalid media buffer: ${sharpErr.message}. Trying to download brand placeholder.`);
           let fallbackBuffer: Buffer | null = null;
           try {
             const fetchRes = await fetch('https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=800&q=80');
@@ -81,13 +93,11 @@ export class MediaProcessingQueue {
               const arrayBuffer = await fetchRes.arrayBuffer();
               fallbackBuffer = Buffer.from(arrayBuffer);
             }
-          } catch (fetchErr: any) {
-            logger.warn(`[MediaProcessingQueue] Failed to download online placeholder: ${fetchErr.message}`);
+          } catch (e: any) {
+             logger.warn(`[MediaProcessingQueue] Failed fallback fetch`);
           }
-          
           if (!fallbackBuffer) {
-            // Solid color PNG fallback
-            fallbackBuffer = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAGQAAABkCAYAAABw4pVUAAAAL0lEQVR42u3BAQ0AAADCoPdPbQ8HFAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAOBvBh12AAEC7mSjAAAAAElFTKSuQmCC', 'base64');
+            fallbackBuffer = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=', 'base64');
           }
           buffer = fallbackBuffer;
         }
