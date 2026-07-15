@@ -104,10 +104,19 @@ export class AuthController {
           userAgent: req.get('user-agent') || 'unknown',
           rememberDevice: !!rememberDevice,
         });
+
+        // 3. Set cookies for login only
+        setAuthCookies(res, result.accessToken, result.refreshToken, !!rememberDevice);
+
+        return res.status(200).json({
+          success: true,
+          message: 'OTP verified successfully.',
+          data: result,
+        });
       } catch (err: any) {
         // User not found -> register
         const userName = name || `User_${Math.floor(1000 + Math.random() * 9000)}`;
-        result = await authService.register({
+        const registerResult = await authService.register({
           name: userName,
           email: cleanEmail,
           deviceId,
@@ -118,16 +127,13 @@ export class AuthController {
           userAgent: req.get('user-agent') || 'unknown',
           rememberDevice: !!rememberDevice,
         });
+
+        return res.status(200).json({
+          success: true,
+          message: 'Registration successful. Please log in.',
+          user: registerResult.user,
+        });
       }
-
-      // 3. Set cookies
-      setAuthCookies(res, result.accessToken, result.refreshToken, !!rememberDevice);
-
-      return res.status(200).json({
-        success: true,
-        message: 'OTP verified successfully.',
-        data: result,
-      });
     } catch (e: any) {
       logger.error(`Verify email OTP error: ${e.message}`);
       return res.status(400).json({ success: false, code: 'OTP_VERIFICATION_FAILED', message: e.message });
@@ -197,10 +203,19 @@ export class AuthController {
           userAgent: req.get('user-agent') || 'unknown',
           rememberDevice: !!rememberDevice,
         });
+
+        // 3. Set cookies for login only
+        setAuthCookies(res, result.accessToken, result.refreshToken, !!rememberDevice);
+
+        return res.status(200).json({
+          success: true,
+          message: 'OTP verified successfully.',
+          data: result,
+        });
       } catch (err: any) {
         // User not found -> register
         const userName = `User_${cleanMobile.slice(-4)}`;
-        result = await authService.register({
+        const registerResult = await authService.register({
           name: userName,
           mobile: cleanMobile,
           deviceId,
@@ -211,16 +226,13 @@ export class AuthController {
           userAgent: req.get('user-agent') || 'unknown',
           rememberDevice: !!rememberDevice,
         });
+
+        return res.status(200).json({
+          success: true,
+          message: 'Registration successful. Please log in.',
+          user: registerResult.user,
+        });
       }
-
-      // 3. Set cookies
-      setAuthCookies(res, result.accessToken, result.refreshToken, !!rememberDevice);
-
-      return res.status(200).json({
-        success: true,
-        message: 'OTP verified successfully.',
-        data: result,
-      });
     } catch (e: any) {
       logger.error(`Verify mobile OTP error: ${e.message}`);
       return res.status(400).json({ success: false, code: 'OTP_VERIFICATION_FAILED', message: e.message });

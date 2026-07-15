@@ -166,10 +166,7 @@ export class MediaProcessingQueue {
           include: { variants: true }
         });
 
-        // 6. Delete temp staging file
-        if (fs.existsSync(tempFilePath)) {
-          await fs.promises.unlink(tempFilePath);
-        }
+        // 6. Deleted temp staging file logic (now fetched to buffer)
 
         logger.info(`[MediaProcessingQueue] Successfully approved and published story: ${storyId}`);
 
@@ -204,9 +201,6 @@ export class MediaProcessingQueue {
               where: { id: storyId },
               data: { moderation: 'BLOCKED', deleteReason: err.message }
             });
-            if (fs.existsSync(tempFilePath)) {
-              await fs.promises.unlink(tempFilePath);
-            }
             await storyFeedService.invalidateCache(userId);
             await eventBus.publish('story.moderated', { storyId, userId, status: 'BLOCKED' });
           } catch (dbErr: any) {
