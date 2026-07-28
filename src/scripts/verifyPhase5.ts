@@ -171,17 +171,17 @@ async function run() {
   // 5. Message Search Tests (Phase 5A)
   // ─────────────────────────────────────────
   const conversation = await chatRepository.createDirectConversation(userA.id, userB.id);
-  await chatRepository.createMessage({ conversationId: conversation.id, senderId: userA.id, text: 'Hello, this is a secret keyword VyraTest' });
-  await chatRepository.createMessage({ conversationId: conversation.id, senderId: userB.id, text: 'Hi! Let us search for VyraTest here' });
+  await chatRepository.createMessage({ conversationId: conversation.id, senderId: userA.id, text: 'Hello, this is a secret keyword SociallTest' });
+  await chatRepository.createMessage({ conversationId: conversation.id, senderId: userB.id, text: 'Hi! Let us search for SociallTest here' });
 
-  const searchResults = await chatRepository.searchMessages(conversation.id, 'vyratest', userA.id);
+  const searchResults = await chatRepository.searchMessages(conversation.id, 'socialltest', userA.id);
   assert(searchResults.length === 2, '5A-12 Message search: case-insensitive match found');
 
   // Search by non-member should throw
   let searchFailed = false;
   try {
     const userC = await createUser('c');
-    await chatRepository.searchMessages(conversation.id, 'vyratest', userC.id);
+    await chatRepository.searchMessages(conversation.id, 'socialltest', userC.id);
   } catch (err: any) {
     if (err.message.includes('Unauthorized')) searchFailed = true;
   }
@@ -256,8 +256,8 @@ async function run() {
   assert(hiddenPost?.isHidden === true, '5B-10 Content soft-hiding: post set to hidden');
 
   const feedAfterHide = await postService.getFeed(userA.id, { limit: 10 });
-  const hasHidden = feedAfterHide.some(p => p.id === newPost.id);
-  assert(!hasHidden, '5B-11 Feed excludes soft-hidden posts correctly');
+  const isMissing = feedAfterHide.posts.some((p: any) => p.id === newPost.id);
+  assert(!isMissing, '5B-11 Feed excludes soft-hidden posts correctly');
 
   // Restore content
   await adminRepository.hideContent(newPost.id, false);

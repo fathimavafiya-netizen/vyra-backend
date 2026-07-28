@@ -15,7 +15,7 @@ async function runTests() {
     user = await prisma.user.create({
       data: {
         username: 'storytester',
-        email: 'storytester@vyra.com',
+        email: 'storytester@sociall.com',
         mobile: '9999999999',
         password: 'mock-password',
       },
@@ -31,7 +31,7 @@ async function runTests() {
     mentionedUser = await prisma.user.create({
       data: {
         username: 'mentionedfriend',
-        email: 'friend@vyra.com',
+        email: 'friend@sociall.com',
         mobile: '8888888888',
         password: 'mock-password',
       },

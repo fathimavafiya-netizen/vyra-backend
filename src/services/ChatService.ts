@@ -2,6 +2,10 @@ import chatRepository, { MessageType } from '../repositories/ChatRepository';
 import userRepository from '../repositories/UserRepository';
 import { onlineUsers } from '../socket/state';
 import { MemberRole } from '../config/constants';
+import { createChildLogger } from '../logger/childLogger';
+import { LogAction } from '../logger/actions';
+
+const log = createChildLogger('chat');
 
 function formatMessage(m: any) {
   return {
@@ -54,7 +58,7 @@ export class ChatService {
 
       return {
         chatRoomId: c.id,
-        name: c.isGroup ? c.name : (otherMember?.user.profile?.name ?? 'Vyra User'),
+        name: c.isGroup ? c.name : (otherMember?.user.profile?.name ?? 'Sociall User'),
         isGroup: c.isGroup,
         memberCount: c.members.length,
         partner: otherMember
@@ -68,7 +72,7 @@ export class ChatService {
             }
           : {
               _id: 'deleted',
-              name: 'Vyra User',
+              name: 'Sociall User',
               profilePic:
                 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&h=150&q=80',
               bio: '',
@@ -115,7 +119,7 @@ export class ChatService {
 
     return {
       _id: chat.id,
-      name: otherMember?.user.profile?.name ?? 'Vyra User',
+      name: otherMember?.user.profile?.name ?? 'Sociall User',
       profilePic:
         otherMember?.user.profile?.profilePic ??
         'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&h=150&q=80',
@@ -183,6 +187,8 @@ export class ChatService {
       replyToId: data.replyToId,
     });
 
+    log.info({ action: LogAction.MESSAGE_SEND, userId, conversationId: data.conversationId, messageId: message.id, type: mType });
+
     return formatMessage(message);
   }
 
@@ -193,6 +199,7 @@ export class ChatService {
 
   async deleteMessage(userId: string, messageId: string) {
     await chatRepository.softDeleteMessage(messageId, userId);
+    log.info({ action: LogAction.MESSAGE_DELETE, userId, messageId });
     return true;
   }
 

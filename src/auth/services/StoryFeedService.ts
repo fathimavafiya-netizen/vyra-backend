@@ -61,7 +61,10 @@ export class StoryFeedService {
           userId: { in: activeUserIds },
           expiresAt: { gt: now },
           deletedAt: null,
-          moderation: 'APPROVED'
+          OR: [
+            { moderation: 'APPROVED' },
+            { userId: viewerId, moderation: 'PENDING' }
+          ]
         },
         include: {
           user: { include: { profile: true } },
@@ -120,11 +123,16 @@ export class StoryFeedService {
       }>();
 
       for (const slide of activeSlides) {
+        const u = slide.user;
         const uid = slide.userId;
         if (!userGroupMap.has(uid)) {
           userGroupMap.set(uid, {
-            userId: uid,
-            user: slide.user,
+            userId: u.id,
+            user: {
+              username: u.username,
+              name: u.profile?.name || u.username,
+              profilePic: u.profile?.profilePic
+            },
             stories: [],
             latestUpload: slide.createdAt,
             hasUnseen: false,
@@ -221,7 +229,9 @@ export class StoryFeedService {
         }
         // Map mediaUrl to the "original" variant for client compatibility
         const originalVariant = story.variants.find((v: any) => v.resolution === 'original') || story.variants[0];
-        story.mediaUrl = originalVariant ? originalVariant.url : '';
+        if (originalVariant) {
+          story.mediaUrl = originalVariant.url;
+        }
       }
     }
   }

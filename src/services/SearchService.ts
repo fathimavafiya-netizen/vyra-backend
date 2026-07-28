@@ -35,7 +35,7 @@ export class SearchService {
     if (type === 'posts' || type === 'reels' || type === 'videos') {
       const dbType = type === 'reels' ? 'REEL' : type === 'videos' ? 'VIDEOS' : undefined;
       const postsList = await searchRepository.searchPosts(query, dbType, limit, offset);
-      const posts = postsList.map(p => formatPostResponse(p));
+      const posts = await Promise.all(postsList.map(p => formatPostResponse(p, userId)));
       return { posts };
     }
 
@@ -63,7 +63,7 @@ export class SearchService {
         username: u.profile!.username,
         profilePic: u.profile!.profilePic,
       })),
-      posts: postsList.map(p => formatPostResponse(p)),
+      posts: await Promise.all(postsList.map(p => formatPostResponse(p, userId))),
       hashtags: hashtagsList.map(h => ({
         _id: h.id,
         name: h.name,
@@ -87,6 +87,10 @@ export class SearchService {
 
   async getSuggestions(query: string) {
     return searchRepository.getSuggestions(query);
+  }
+
+  async getSuggestedUsers(userId: string) {
+    return searchRepository.getSuggestedUsers(userId, 5);
   }
 }
 

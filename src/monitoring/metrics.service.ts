@@ -41,9 +41,9 @@ export class MetricsService {
   getPrometheusMetrics(): string {
     let output = '';
     for (const [key, value] of metricsStore.entries()) {
-      output += `# HELP vyra_${key} Current count of ${key.replace(/_/g, ' ')}\n`;
-      output += `# TYPE vyra_${key} counter\n`;
-      output += `vyra_${key} ${value}\n\n`;
+      output += `# HELP sociall_${key} Current count of ${key.replace(/_/g, ' ')}\n`;
+      output += `# TYPE sociall_${key} counter\n`;
+      output += `sociall_${key} ${value}\n\n`;
     }
     return output;
   }

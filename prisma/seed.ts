@@ -45,7 +45,7 @@ async function main() {
   const userAria = await prisma.user.create({
     data: {
       id: '60c72b2f9b1d8b2badcf5001',
-      email: 'aria@vyra.com',
+      email: 'aria@sociall.com',
       mobile: '+919876543210',
       password: hashedPassword,
       profile: {
@@ -60,7 +60,7 @@ async function main() {
       settings: {
         create: {
           isPrivate: false,
-          darkMode: true,
+          darkMode: false,
           likesEnabled: true,
           commentsEnabled: true,
           followersEnabled: true,
@@ -75,7 +75,7 @@ async function main() {
   const userKabir = await prisma.user.create({
     data: {
       id: '60c72b2f9b1d8b2badcf5002',
-      email: 'kabir@vyra.com',
+      email: 'kabir@sociall.com',
       mobile: '+919999888877',
       password: hashedPassword,
       profile: {
@@ -90,7 +90,7 @@ async function main() {
       settings: {
         create: {
           isPrivate: false,
-          darkMode: true,
+          darkMode: false,
           likesEnabled: true,
           commentsEnabled: true,
           followersEnabled: true,
@@ -105,7 +105,7 @@ async function main() {
   const userZara = await prisma.user.create({
     data: {
       id: '60c72b2f9b1d8b2badcf5003',
-      email: 'zara@vyra.com',
+      email: 'zara@sociall.com',
       mobile: '+12025550143',
       password: hashedPassword,
       profile: {
@@ -120,7 +120,7 @@ async function main() {
       settings: {
         create: {
           isPrivate: false,
-          darkMode: true,
+          darkMode: false,
           likesEnabled: true,
           commentsEnabled: true,
           followersEnabled: true,
@@ -135,7 +135,7 @@ async function main() {
   const userRohan = await prisma.user.create({
     data: {
       id: '60c72b2f9b1d8b2badcf5004',
-      email: 'rohan@vyra.com',
+      email: 'rohan@sociall.com',
       mobile: '+919876500004',
       password: hashedPassword,
       profile: {
@@ -147,14 +147,14 @@ async function main() {
           coverPic: 'https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?auto=format&fit=crop&w=800&h=300&q=80',
         },
       },
-      settings: { create: { isPrivate: false, darkMode: true, likesEnabled: true, commentsEnabled: true } }
+      settings: { create: { isPrivate: false, darkMode: false, likesEnabled: true, commentsEnabled: true } }
     }
   });
 
   const userElena = await prisma.user.create({
     data: {
       id: '60c72b2f9b1d8b2badcf5005',
-      email: 'elena@vyra.com',
+      email: 'elena@sociall.com',
       mobile: '+79876543210',
       password: hashedPassword,
       profile: {
@@ -166,14 +166,14 @@ async function main() {
           coverPic: 'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?auto=format&fit=crop&w=800&h=300&q=80',
         },
       },
-      settings: { create: { isPrivate: false, darkMode: true, likesEnabled: true, commentsEnabled: true } }
+      settings: { create: { isPrivate: false, darkMode: false, likesEnabled: true, commentsEnabled: true } }
     }
   });
 
   const userVikram = await prisma.user.create({
     data: {
       id: '60c72b2f9b1d8b2badcf5006',
-      email: 'vikram@vyra.com',
+      email: 'vikram@sociall.com',
       mobile: '+919876500006',
       password: hashedPassword,
       profile: {
@@ -185,14 +185,14 @@ async function main() {
           coverPic: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=800&h=300&q=80',
         },
       },
-      settings: { create: { isPrivate: false, darkMode: true, likesEnabled: true, commentsEnabled: true } }
+      settings: { create: { isPrivate: false, darkMode: false, likesEnabled: true, commentsEnabled: true } }
     }
   });
 
   const userMaya = await prisma.user.create({
     data: {
       id: '60c72b2f9b1d8b2badcf5007',
-      email: 'maya@vyra.com',
+      email: 'maya@sociall.com',
       mobile: '+12025550177',
       password: hashedPassword,
       profile: {
@@ -204,14 +204,14 @@ async function main() {
           coverPic: 'https://images.unsplash.com/photo-1516979187457-637abb4f9353?auto=format&fit=crop&w=800&h=300&q=80',
         },
       },
-      settings: { create: { isPrivate: false, darkMode: true, likesEnabled: true, commentsEnabled: true } }
+      settings: { create: { isPrivate: false, darkMode: false, likesEnabled: true, commentsEnabled: true } }
     }
   });
 
   const userArjun = await prisma.user.create({
     data: {
       id: '60c72b2f9b1d8b2badcf5008',
-      email: 'arjun@vyra.com',
+      email: 'arjun@sociall.com',
       mobile: '+919876500008',
       password: hashedPassword,
       profile: {
@@ -223,14 +223,14 @@ async function main() {
           coverPic: 'https://images.unsplash.com/photo-1492691527719-9d1e07e534b4?auto=format&fit=crop&w=800&h=300&q=80',
         },
       },
-      settings: { create: { isPrivate: false, darkMode: true, likesEnabled: true, commentsEnabled: true } }
+      settings: { create: { isPrivate: false, darkMode: false, likesEnabled: true, commentsEnabled: true } }
     }
   });
 
   const userMeera = await prisma.user.create({
     data: {
       id: '60c72b2f9b1d8b2badcf5009',
-      email: 'meera@vyra.com',
+      email: 'meera@sociall.com',
       mobile: '+919876500009',
       password: hashedPassword,
       profile: {
@@ -242,14 +242,14 @@ async function main() {
           coverPic: 'https://images.unsplash.com/photo-1556910103-1c02745aae4d?auto=format&fit=crop&w=800&h=300&q=80',
         },
       },
-      settings: { create: { isPrivate: false, darkMode: true, likesEnabled: true, commentsEnabled: true } }
+      settings: { create: { isPrivate: false, darkMode: false, likesEnabled: true, commentsEnabled: true } }
     }
   });
 
   const userDev = await prisma.user.create({
     data: {
       id: '60c72b2f9b1d8b2badcf5010',
-      email: 'dev@vyra.com',
+      email: 'dev@sociall.com',
       mobile: '+919876500010',
       password: hashedPassword,
       profile: {
@@ -261,7 +261,7 @@ async function main() {
           coverPic: 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&h=300&q=80',
         },
       },
-      settings: { create: { isPrivate: false, darkMode: true, likesEnabled: true, commentsEnabled: true } }
+      settings: { create: { isPrivate: false, darkMode: false, likesEnabled: true, commentsEnabled: true } }
     }
   });
 

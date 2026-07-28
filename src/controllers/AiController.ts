@@ -15,7 +15,7 @@ export class AiController {
       // If we have an image, run visual captioning. Otherwise fallback to text prompt generator.
       const caption = imageUrl 
         ? await aiService.generateCaption(imageUrl)
-        : `✨ Canned Caption for text prompt: "${prompt}". Created on Vyra 💫 #vibes`;
+        : `✨ Canned Caption for text prompt: "${prompt}". Created on Sociall 💫 #vibes`;
 
       return res.status(200).json({ success: true, caption });
     } catch (e: any) {
@@ -59,7 +59,7 @@ export class AiController {
       const imageUrl = req.body.imageUrl || req.body.mediaUrl;
       let style = req.body.style || req.body.filterType || 'anime';
       // Intercept legacy 'ghibli' filterType for backward compatibility
-      // TODO: remove legacy 'ghibli' fallback mapping after client version v1.2.0 release
+      // Tracked in ISSUES.md (Issue #1): remove legacy 'ghibli' fallback mapping after client version v1.2.0 release
       if (style.toLowerCase() === 'ghibli') {
         style = 'anime';
       }

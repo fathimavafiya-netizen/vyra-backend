@@ -168,7 +168,7 @@ async function run() {
   assert(criticalAudit.length > 0, 'V4-12 Critical security replay log captured successfully');
 
   const metricsText = metricsService.getPrometheusMetrics();
-  assert(metricsText.includes('vyra_replay_attacks'), 'V4-13 Metrics service exposed Prometheus formatted metrics');
+  assert(metricsText.includes('sociall_replay_attacks'), 'V4-13 Metrics service exposed Prometheus formatted metrics');
 
   await cleanupTestData();
 

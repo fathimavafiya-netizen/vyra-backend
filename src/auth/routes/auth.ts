@@ -60,6 +60,11 @@ router.get('/me', authMiddleware as any, authController.me as any);
 
 // ─── USERNAME AVAILABILITY ───
 router.get('/check-username', checkUsernameLimiter, authController.checkUsername as any);
+router.get('/check-username/:username', checkUsernameLimiter, authController.checkUsername as any);
+router.post('/check-username', checkUsernameLimiter, authController.checkUsername as any);
+
+// ─── SIGNUP ALIAS ───
+router.post('/signup', authLimiter, validate(validators.registerSchema), authController.register as any);
 
 // ─── SESSIONS & ROTATIONS ───
 router.post('/refresh', authController.refresh);

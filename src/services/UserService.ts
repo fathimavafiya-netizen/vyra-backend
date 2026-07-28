@@ -77,7 +77,9 @@ export class UserService {
         throw new Error('Username is not available or contains invalid characters.');
       }
     }
-    return userRepository.updateProfile(userId, data);
+    const result = await userRepository.updateProfile(userId, data);
+    await cache.del(`user_profile:${userId}`);
+    return result;
   }
 
   async updateSettings(userId: string, data: {

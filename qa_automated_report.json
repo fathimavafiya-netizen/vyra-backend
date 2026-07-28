@@ -1,0 +1,550 @@
+[
+  {
+    "test": "AUTH: Register",
+    "status": "PASS",
+    "timeMs": 2154,
+    "response": {
+      "success": true,
+      "message": "Registration successful. Please log in.",
+      "data": {
+        "user": {
+          "id": "3a34f685-d2af-4dc9-aa0b-87fe346c3cf4",
+          "fullName": "QA Tester",
+          "username": "qa_user_1784525183847",
+          "email": "qa_test_1784525183847@example.com",
+          "phone": null,
+          "countryCode": null,
+          "profilePic": "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&h=150&q=80",
+          "role": "USER",
+          "isVerified": true
+        }
+      }
+    },
+    "error": ""
+  },
+  {
+    "test": "AUTH: Login",
+    "status": "PASS",
+    "timeMs": 1015,
+    "response": {
+      "success": true,
+      "message": "Logged in successfully.",
+      "data": {
+        "user": {
+          "id": "3a34f685-d2af-4dc9-aa0b-87fe346c3cf4",
+          "fullName": "QA Tester",
+          "username": "qa_user_1784525183847",
+          "email": "qa_test_1784525183847@example.com",
+          "phone": null,
+          "countryCode": null,
+          "profilePic": "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&h=150&q=80",
+          "role": "USER",
+          "isVerified": true,
+          "isAdminSession": false
+        },
+        "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6ImtleTEifQ.eyJzdWIiOiIzYTM0ZjY4NS1kMmFmLTRkYzktYWEwYi04N2ZlMzQ2YzNjZjQiLCJyb2xlIjoiVVNFUiIsInNlc3Npb25JZCI6IjRmY2EwMDg1LWQ2NjEtNDg4ZC1iYWI0LWZhMDA4Nzg3ZmJjOCIsImFjY2Vzc1Rva2VuVmVyc2lvbiI6MSwiaWF0IjoxNzg0NTI1MTg2LCJleHAiOjE3ODQ1MjYwODZ9.PaQazMaNIsyW06g7vvCEDYMdx6q0FR_zeY8DqmhwKLM",
+        "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6ImtleTEifQ.eyJzdWIiOiIzYTM0ZjY4NS1kMmFmLTRkYzktYWEwYi04N2ZlMzQ2YzNjZjQiLCJzZXNzaW9uSWQiOiI0ZmNhMDA4NS1kNjYxLTQ4OGQtYmFiNC1mYTAwODc4N2ZiYzgiLCJpYXQiOjE3ODQ1MjUxODYsImV4cCI6MTc4NzExNzE4Nn0.RvZqYukeHeXL_56mMa-U-Iq8RGzS0n3sNsNNij3LhMw"
+      }
+    },
+    "error": ""
+  },
+  {
+    "test": "AUTH: Invalid Credentials",
+    "status": "FAIL",
+    "timeMs": 282,
+    "response": {
+      "success": false,
+      "code": "LOGIN_FAILED",
+      "message": "Invalid credentials."
+    },
+    "error": "Invalid credentials."
+  },
+  {
+    "test": "PROFILE: Update Profile",
+    "status": "PASS",
+    "timeMs": 1017,
+    "response": {
+      "success": true,
+      "message": "Profile updated successfully",
+      "profile": {
+        "id": "7b69dd67-7982-40e3-821a-59c52deda353",
+        "userId": "3a34f685-d2af-4dc9-aa0b-87fe346c3cf4",
+        "name": "QA Tester",
+        "username": "qa_user_1784525183847",
+        "profilePic": "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&h=150&q=80",
+        "coverPic": "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=800&h=300&q=80",
+        "bio": "QA Test Bio",
+        "createdAt": "2026-07-20T05:26:25.420Z",
+        "updatedAt": "2026-07-20T05:26:27.697Z"
+      },
+      "user": {
+        "id": "3a34f685-d2af-4dc9-aa0b-87fe346c3cf4",
+        "name": "QA Tester",
+        "username": "qa_user_1784525183847",
+        "bio": "QA Test Bio",
+        "profilePic": "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&h=150&q=80",
+        "coverPic": "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=800&h=300&q=80",
+        "email": "qa_test_1784525183847@example.com",
+        "mobile": null,
+        "settings": {
+          "id": "ffbd9a16-12e2-4885-a301-e4a35f5548da",
+          "userId": "3a34f685-d2af-4dc9-aa0b-87fe346c3cf4",
+          "isPrivate": false,
+          "darkMode": true,
+          "likesEnabled": true,
+          "commentsEnabled": true,
+          "followersEnabled": true,
+          "messagesEnabled": true,
+          "mentionsEnabled": true,
+          "aiEnabled": true,
+          "seenReceiptsEnabled": true,
+          "updatedAt": "2026-07-20T05:26:25.420Z"
+        },
+        "followers": [],
+        "following": [],
+        "sentRequests": [],
+        "receivedRequests": []
+      }
+    },
+    "error": ""
+  },
+  {
+    "test": "UPLOAD: Image",
+    "status": "FAIL",
+    "timeMs": 475,
+    "response": {},
+    "error": "Cannot read properties of undefined (reading 'url')"
+  },
+  {
+    "test": "POSTS: Create Post",
+    "status": "PASS",
+    "timeMs": 1056,
+    "response": {
+      "success": true,
+      "message": "POST created successfully",
+      "post": {
+        "id": "36e5b441-ef4e-407a-8359-21a122fe2223",
+        "userId": "3a34f685-d2af-4dc9-aa0b-87fe346c3cf4",
+        "type": "POST",
+        "caption": "QA Test Post",
+        "status": "PUBLISHED",
+        "version": 1,
+        "lastEditedBy": null,
+        "scheduledAt": null,
+        "publishedAt": null,
+        "audioTitle": null,
+        "isHidden": false,
+        "duration": null,
+        "thumbnailUrl": null,
+        "musicTrackId": null,
+        "originalPostId": null,
+        "deletedAt": null,
+        "createdAt": "2026-07-20T05:26:29.211Z",
+        "updatedAt": "2026-07-20T05:26:29.211Z",
+        "media": [
+          {
+            "id": "010a1ef3-cb88-4afb-989f-6dc1aa22ba39",
+            "postId": "36e5b441-ef4e-407a-8359-21a122fe2223",
+            "storyId": null,
+            "userId": "3a34f685-d2af-4dc9-aa0b-87fe346c3cf4",
+            "url": "https://example.com/test.jpg",
+            "type": "IMAGE",
+            "order": 0,
+            "duration": 0,
+            "size": 0,
+            "createdAt": "2026-07-20T05:26:29.211Z"
+          }
+        ],
+        "user": {
+          "id": "3a34f685-d2af-4dc9-aa0b-87fe346c3cf4",
+          "email": "qa_test_1784525183847@example.com",
+          "mobile": null,
+          "password": "$2a$10$CKrvDj/efLu.O6BPJ7Dm8u2jvi9tW4rOE.RKPG0wJTcxaWdjtIeHG",
+          "isActive": true,
+          "deletedAt": null,
+          "createdAt": "2026-07-20T05:26:25.420Z",
+          "updatedAt": "2026-07-20T05:26:25.420Z",
+          "fullName": "QA Tester",
+          "username": "qa_user_1784525183847",
+          "phone": null,
+          "countryCode": null,
+          "passwordHash": "$2a$10$CKrvDj/efLu.O6BPJ7Dm8u2jvi9tW4rOE.RKPG0wJTcxaWdjtIeHG",
+          "provider": "credentials",
+          "googleSub": null,
+          "profilePicture": null,
+          "emailVerified": true,
+          "phoneVerified": false,
+          "isVerified": true,
+          "emailVerifiedAt": "2026-07-20T05:26:25.419Z",
+          "mobileVerifiedAt": null,
+          "emailVerificationPending": false,
+          "mobileVerificationPending": false,
+          "isBanned": false,
+          "bannedReason": null,
+          "lastLogin": null,
+          "role": "USER",
+          "mfaEnabled": false,
+          "mfaMethod": null,
+          "consentGivenAt": "2026-07-20T05:26:25.419Z",
+          "privacyVersion": "1.0",
+          "termsVersion": "1.0",
+          "lastSeen": null,
+          "fcmToken": null,
+          "profile": {
+            "id": "7b69dd67-7982-40e3-821a-59c52deda353",
+            "userId": "3a34f685-d2af-4dc9-aa0b-87fe346c3cf4",
+            "name": "QA Tester",
+            "username": "qa_user_1784525183847",
+            "profilePic": "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&h=150&q=80",
+            "coverPic": "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=800&h=300&q=80",
+            "bio": "QA Test Bio",
+            "createdAt": "2026-07-20T05:26:25.420Z",
+            "updatedAt": "2026-07-20T05:26:27.697Z"
+          }
+        },
+        "originalPost": null
+      }
+    },
+    "error": ""
+  },
+  {
+    "test": "POSTS: Feed Refresh",
+    "status": "PASS",
+    "timeMs": 3972,
+    "response": {
+      "success": true,
+      "posts": [
+        {
+          "_id": "36e5b441-ef4e-407a-8359-21a122fe2223",
+          "user": {
+            "_id": "3a34f685-d2af-4dc9-aa0b-87fe346c3cf4",
+            "name": "QA Tester",
+            "profilePic": "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&h=150&q=80",
+            "username": "qa_user_1784525183847"
+          },
+          "type": "post",
+          "caption": "QA Test Post",
+          "hashtags": [],
+          "media": [
+            {
+              "url": "https://example.com/test.jpg",
+              "type": "image",
+              "order": 0
+            }
+          ],
+          "mediaUrl": "https://example.com/test.jpg",
+          "mediaType": "image",
+          "likes": [],
+          "comments": [],
+          "createdAt": "2026-07-20T05:26:29.211Z",
+          "duration": 0,
+          "thumbnailUrl": "",
+          "musicTrackId": null,
+          "originalPostId": null,
+          "originalPost": null
+        },
+        {
+          "_id": "16d8fd74-9731-4c58-8249-bababcee30b8",
+          "user": {
+            "_id": "20ac1823-5a90-49aa-ac12-78db2c2c34b4",
+            "name": "aysh",
+            "profilePic": "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&h=150&q=80",
+            "username": "aysha"
+          },
+          "type": "post",
+          "caption": "",
+          "hashtags": [],
+          "media": [
+            {
+              "url": "https://res.cloudinary.com/esvdcd7b/image/upload/v1784486746/sociall/sociall-processed_1784486744325_2Q%3D%3D.webp.webp",
+              "type": "image",
+              "order": 0
+            }
+          ],
+          "mediaUrl": "https://res.cloudinary.com/esvdcd7b/image/upload/v1784486746/sociall/sociall-processed_1784486744325_2Q%3D%3D.webp.webp",
+          "mediaType": "image",
+          "likes": [],
+          "comments": [],
+          "createdAt": "2026-07-19T18:45:46.700Z",
+          "duration": 0,
+          "thumbnailUrl": "",
+          "musicTrackId": null,
+          "originalPostId": null,
+          "originalPost": null
+        },
+        {
+          "_id": "7811f91e-77be-404f-8807-5a2c6adc89ab",
+          "user": {
+            "_id": "dbfc4c42-bf1d-4762-ba95-2fa813b6e9e5",
+            "name": "Sarah Jenkins",
+            "profilePic": "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&h=150&q=80",
+            "username": "sarah"
+          },
+          "type": "post",
+          "caption": "",
+          "hashtags": [],
+          "media": [],
+          "mediaUrl": "",
+          "mediaType": "image",
+          "likes": [],
+          "comments": [],
+          "createdAt": "2026-07-18T13:33:40.407Z",
+          "duration": 0,
+          "thumbnailUrl": "",
+          "musicTrackId": null,
+          "originalPostId": "7ca4e62e-7a3e-47ab-a9dd-1d0b1ae8f932",
+          "originalPost": {
+            "_id": "7ca4e62e-7a3e-47ab-a9dd-1d0b1ae8f932",
+            "user": {
+              "_id": "dbfc4c42-bf1d-4762-ba95-2fa813b6e9e5",
+              "name": "Sarah Jenkins",
+              "profilePic": "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&h=150&q=80",
+              "username": "sarah"
+            },
+            "type": "post",
+            "caption": "",
+            "mediaUrl": "https://res.cloudinary.com/esvdcd7b/image/upload/v1784381602/sociall/sociall-processed_1784381600746_FC67C04C-78A5-4621-91F5-B4C1EEDE6D8F.webp.webp",
+            "mediaType": "image",
+            "media": [
+              {
+                "url": "https://res.cloudinary.com/esvdcd7b/image/upload/v1784381602/sociall/sociall-processed_1784381600746_FC67C04C-78A5-4621-91F5-B4C1EEDE6D8F.webp.webp",
+                "type": "image",
+                "order": 0
+              }
+            ],
+            "createdAt": "2026-07-18T13:33:25.575Z"
+          }
+        },
+        {
+          "_id": "7ca4e62e-7a3e-47ab-a9dd-1d0b1ae8f932",
+          "user": {
+            "_id": "dbfc4c42-bf1d-4762-ba95-2fa813b6e9e5",
+            "name": "Sarah Jenkins",
+            "profilePic": "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&h=150&q=80",
+            "username": "sarah"
+          },
+          "type": "post",
+          "caption": "",
+          "hashtags": [],
+          "media": [
+            {
+              "url": "https://res.cloudinary.com/esvdcd7b/image/upload/v1784381602/sociall/sociall-processed_1784381600746_FC67C04C-78A5-4621-91F5-B4C1EEDE6D8F.webp.webp",
+              "type": "image",
+              "order": 0
+            }
+          ],
+          "mediaUrl": "https://res.cloudinary.com/esvdcd7b/image/upload/v1784381602/sociall/sociall-processed_1784381600746_FC67C04C-78A5-4621-91F5-B4C1EEDE6D8F.webp.webp",
+          "mediaType": "image",
+          "likes": [
+            "dbfc4c42-bf1d-4762-ba95-2fa813b6e9e5"
+          ],
+          "comments": [],
+          "createdAt": "2026-07-18T13:33:25.575Z",
+          "duration": 0,
+          "thumbnailUrl": "",
+          "musicTrackId": null,
+          "originalPostId": null,
+          "originalPost": null
+        },
+        {
+          "_id": "b05774e7-2a67-41a6-a5eb-148e0ae733b0",
+          "user": {
+            "_id": "dbfc4c42-bf1d-4762-ba95-2fa813b6e9e5",
+            "name": "Sarah Jenkins",
+            "profilePic": "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&h=150&q=80",
+            "username": "sarah"
+          },
+          "type": "post",
+          "caption": "",
+          "hashtags": [],
+          "media": [],
+          "mediaUrl": "",
+          "mediaType": "image",
+          "likes": [],
+          "comments": [],
+          "createdAt": "2026-07-18T13:27:36.154Z",
+          "duration": 0,
+          "thumbnailUrl": "",
+          "musicTrackId": null,
+          "originalPostId": "71b356e5-0e33-4c4c-8a09-7f392e306b78",
+          "originalPost": {
+            "_id": "71b356e5-0e33-4c4c-8a09-7f392e306b78",
+            "user": {
+              "_id": "61ae5345-1ccd-42f6-8439-297a839dc29c",
+              "name": "Maya Rossi",
+              "profilePic": "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&h=150&q=80",
+              "username": "mayarossi_99"
+            },
+            "type": "post",
+            "caption": "",
+            "mediaUrl": "",
+            "mediaType": "image",
+            "media": [],
+            "createdAt": "2026-07-18T10:22:11.237Z"
+          }
+        }
+      ],
+      "nextCursor": "b05774e7-2a67-41a6-a5eb-148e0ae733b0",
+      "hasMore": true
+    },
+    "error": ""
+  },
+  {
+    "test": "POSTS: Delete Post",
+    "status": "PASS",
+    "timeMs": 1349,
+    "response": {
+      "success": true,
+      "message": "Post deleted successfully"
+    },
+    "error": ""
+  },
+  {
+    "test": "SEARCH: Users",
+    "status": "PASS",
+    "timeMs": 1003,
+    "response": {
+      "success": true,
+      "users": [
+        {
+          "_id": "1c0e119f-6ff1-4a9e-bfff-3ab5ffcf87bd",
+          "name": "QA Test User",
+          "username": "qa_test_run",
+          "profilePic": "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&h=150&q=80"
+        },
+        {
+          "_id": "2434ebf0-945c-45c7-8482-04c636fda02c",
+          "name": "QA Tester",
+          "username": "qa_tester_2026",
+          "profilePic": "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&h=150&q=80"
+        },
+        {
+          "_id": "3a34f685-d2af-4dc9-aa0b-87fe346c3cf4",
+          "name": "QA Tester",
+          "username": "qa_user_1784525183847",
+          "profilePic": "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&h=150&q=80"
+        },
+        {
+          "_id": "b7424ed9-7d35-47aa-9615-3ff73825d8e1",
+          "name": "QA Tester",
+          "username": "qa_user_1784525069700",
+          "profilePic": "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&h=150&q=80"
+        }
+      ],
+      "posts": [
+        {}
+      ],
+      "hashtags": []
+    },
+    "error": ""
+  },
+  {
+    "test": "SEARCH: Posts",
+    "status": "PASS",
+    "timeMs": 879,
+    "response": {
+      "success": true,
+      "users": [
+        {
+          "_id": "1c0e119f-6ff1-4a9e-bfff-3ab5ffcf87bd",
+          "name": "QA Test User",
+          "username": "qa_test_run",
+          "profilePic": "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&h=150&q=80"
+        },
+        {
+          "_id": "2434ebf0-945c-45c7-8482-04c636fda02c",
+          "name": "QA Tester",
+          "username": "qa_tester_2026",
+          "profilePic": "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&h=150&q=80"
+        },
+        {
+          "_id": "3a34f685-d2af-4dc9-aa0b-87fe346c3cf4",
+          "name": "QA Tester",
+          "username": "qa_user_1784525183847",
+          "profilePic": "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&h=150&q=80"
+        },
+        {
+          "_id": "b7424ed9-7d35-47aa-9615-3ff73825d8e1",
+          "name": "QA Tester",
+          "username": "qa_user_1784525069700",
+          "profilePic": "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&h=150&q=80"
+        }
+      ],
+      "posts": [
+        {}
+      ],
+      "hashtags": []
+    },
+    "error": ""
+  },
+  {
+    "test": "STORIES: Upload Story",
+    "status": "PASS",
+    "timeMs": 890,
+    "response": {
+      "success": true,
+      "message": "Story processing initiated.",
+      "storyId": "dcf2609e-9752-42cb-bb0f-a919de287249",
+      "status": "PENDING"
+    },
+    "error": ""
+  },
+  {
+    "test": "STORIES: View Feed",
+    "status": "PASS",
+    "timeMs": 784,
+    "response": {
+      "success": true,
+      "stories": []
+    },
+    "error": ""
+  },
+  {
+    "test": "STORIES: Delete Story",
+    "status": "FAIL",
+    "timeMs": 0,
+    "response": {},
+    "error": "No storyId"
+  },
+  {
+    "test": "AI: Background Replace",
+    "status": "PASS",
+    "timeMs": 395,
+    "response": {
+      "success": true,
+      "jobId": "5e20b6f4-2fe9-4402-a979-6b071f2ddf08",
+      "status": "PROCESSING",
+      "message": "Background replacement job queued successfully"
+    },
+    "error": ""
+  },
+  {
+    "test": "AI: Style Transfer",
+    "status": "PASS",
+    "timeMs": 410,
+    "response": {
+      "success": true,
+      "jobId": "ce11d3ff-8c52-456d-bc31-2abc334e0aea",
+      "status": "PROCESSING",
+      "message": "Style transfer job queued successfully"
+    },
+    "error": ""
+  },
+  {
+    "test": "TEMPLATES: Generate Template",
+    "status": "PASS",
+    "timeMs": 409,
+    "response": {
+      "success": true,
+      "videoUrl": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4"
+    },
+    "error": ""
+  },
+  {
+    "test": "CHAT: Socket Connection & Messaging",
+    "status": "FAIL",
+    "timeMs": 5022,
+    "response": {},
+    "error": "Socket operation timed out"
+  }
+]

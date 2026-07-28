@@ -1,24 +1,27 @@
 import { Request, Response, NextFunction } from 'express';
-import logger from '../utils/logger';
+import { logger } from '../logger/index';
+import { LogAction } from '../logger/actions';
 
-export interface CustomRequest extends Request {
-  id?: string;
-  startTime?: number;
-}
+export const loggerMiddleware = (req: Request, res: Response, next: NextFunction) => {
+  if (req.path === '/health') {
+    logger.info({ action: 'HEALTH_CHECK', status: 'UP' });
+    return next();
+  }
 
-export const loggerMiddleware = (req: CustomRequest, res: Response, next: NextFunction) => {
-  const reqId = Math.random().toString(36).substring(2, 9) + '-' + Date.now().toString(36);
-  req.id = reqId;
-  req.startTime = Date.now();
+  const startHrTime = process.hrtime.bigint();
 
   logger.info({
-    msg: `Incoming Request: ${req.method} ${req.originalUrl}`,
-    requestId: reqId,
+    action: LogAction.REQUEST_INCOMING,
+    requestId: req.requestId,
+    userId: req.user?.id,
     ip: req.ip,
+    method: req.method,
+    path: req.originalUrl,
     userAgent: req.get('user-agent'),
+    message: `Incoming Request: ${req.method} ${req.originalUrl}`,
   });
 
-  // Capture response body so error details appear in Render logs
+  // Capture response body so error details appear in logs
   let responseBody: any;
   const originalJson = res.json.bind(res);
   res.json = (body: any) => {
@@ -27,18 +30,21 @@ export const loggerMiddleware = (req: CustomRequest, res: Response, next: NextFu
   };
 
   res.on('finish', () => {
-    const duration = req.startTime ? Date.now() - req.startTime : 0;
+    const durationMs = Number(process.hrtime.bigint() - startHrTime) / 1000000;
     const isError = res.statusCode >= 400;
 
     logger.info({
-      msg: `Request Completed: ${req.method} ${req.originalUrl} - Status ${res.statusCode}`,
-      requestId: reqId,
-      statusCode: res.statusCode,
-      durationMs: duration,
-      // Log error body so we can diagnose 400/500 responses in Render logs
+      action: isError ? LogAction.REQUEST_ERROR : LogAction.REQUEST_COMPLETED,
+      requestId: req.requestId,
+      userId: req.user?.id,
+      status: res.statusCode,
+      durationMs: Math.round(durationMs), // Optional rounding for cleaner logs
+      method: req.method,
+      path: req.originalUrl,
       ...(isError && responseBody
         ? { errorCode: responseBody.code, errorMessage: responseBody.message }
         : {}),
+      message: `Request Completed: ${req.method} ${req.originalUrl} - Status ${res.statusCode}`,
     });
   });
 

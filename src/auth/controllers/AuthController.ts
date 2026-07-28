@@ -2,7 +2,9 @@ import { Request, Response, NextFunction } from 'express';
 import { OAuth2Client } from 'google-auth-library';
 import authenticationFacade from '../facade/AuthenticationFacade';
 import otpUtil from '../../utils/otp';
-import logger from '../../utils/logger';
+import { createChildLogger } from '../../logger/childLogger';
+import { LogAction } from '../../logger/actions';
+const logger = createChildLogger('auth');
 import prisma from '../../config/db';
 import env from '../../config/env';
 import { AuthenticatedRequest } from '../middleware/authMiddleware';
@@ -64,6 +66,7 @@ export class AuthController {
         req,
       });
       await metricsService.incrementMetric('otp_generated');
+      logger.info({ action: LogAction.OTP_SENT, email: cleanEmail || undefined, message: 'OTP sent' });
 
       const isDev = process.env.NODE_ENV !== 'production';
       return res.status(200).json({
@@ -72,7 +75,7 @@ export class AuthController {
         data: isDev ? { devCode: code, devNote: 'Development mode active.' } : null,
       });
     } catch (e: any) {
-      logger.error(`Send email OTP error: ${e.message}`);
+      logger.error({ err: e, message: `Send email OTP error: ${e.message}` });
       return res.status(400).json({ success: false, code: 'OTP_SEND_FAILED', message: e.message });
     }
   }
@@ -96,6 +99,7 @@ export class AuthController {
         req,
       });
       await metricsService.incrementMetric('otp_verified');
+      logger.info({ action: LogAction.OTP_VERIFIED, email: cleanEmail || undefined, message: 'OTP verified' });
 
       // 2. Delegate to Facade
       const result = await authenticationFacade.loginOrRegister({
@@ -119,7 +123,7 @@ export class AuthController {
         data: result,
       });
     } catch (e: any) {
-      logger.error(`Verify email OTP error: ${e.message}`);
+      logger.error({ err: e, message: `Verify email OTP error: ${e.message}` });
       return res.status(400).json({ success: false, code: 'OTP_VERIFICATION_FAILED', message: e.message });
     }
   }
@@ -138,9 +142,9 @@ export class AuthController {
         action: 'OTP_GENERATED',
         severity: 'INFO',
         status: 'MOBILE_OTP_DISPATCHED',
-        req,
       });
       await metricsService.incrementMetric('otp_generated');
+      logger.info({ action: LogAction.OTP_SENT, mobile: cleanMobile || undefined, message: 'OTP sent' });
 
       const isDev = process.env.NODE_ENV !== 'production';
       return res.status(200).json({
@@ -149,7 +153,7 @@ export class AuthController {
         data: isDev ? { devCode: code, devNote: 'Development mode active.' } : null,
       });
     } catch (e: any) {
-      logger.error(`Send mobile OTP error: ${e.message}`);
+      logger.error({ err: e, message: `Send mobile OTP error: ${e.message}` });
       return res.status(400).json({ success: false, code: 'OTP_SEND_FAILED', message: e.message });
     }
   }
@@ -170,9 +174,9 @@ export class AuthController {
         action: 'OTP_VERIFIED',
         severity: 'INFO',
         status: 'MOBILE_OTP_SUCCESS',
-        req,
       });
       await metricsService.incrementMetric('otp_verified');
+      logger.info({ action: LogAction.OTP_VERIFIED, mobile: cleanMobile || undefined, message: 'OTP verified' });
 
       // 2. Delegate to Facade
       const result = await authenticationFacade.loginOrRegister({
@@ -195,7 +199,7 @@ export class AuthController {
         data: result,
       });
     } catch (e: any) {
-      logger.error(`Verify mobile OTP error: ${e.message}`);
+      logger.error({ err: e, message: `Verify mobile OTP error: ${e.message}` });
       return res.status(400).json({ success: false, code: 'OTP_VERIFICATION_FAILED', message: e.message });
     }
   }
@@ -215,7 +219,7 @@ export class AuthController {
       );
 
       setAuthCookies(res, result.accessToken, result.refreshToken, true);
-
+      logger.info({ action: LogAction.AUTH_REFRESH, userId: req.user?.id, message: 'Tokens rotated successfully' });
       return res.status(200).json({
         success: true,
         message: 'Tokens rotated successfully.',
@@ -239,7 +243,7 @@ export class AuthController {
       }
 
       clearAuthCookies(res);
-
+      logger.info({ action: LogAction.AUTH_LOGOUT, message: 'User logged out' });
       return res.status(200).json({
         success: true,
         message: 'Logged out successfully.',
@@ -616,6 +620,7 @@ export class AuthController {
       }
 
       // Auto-login removed. Require explicit login step.
+      logger.info({ action: LogAction.AUTH_REGISTER, userId: user.id, message: 'User registered successfully' });
       return res.status(200).json({
         success: true,
         message: 'Registration successful. Please log in.',
@@ -634,7 +639,7 @@ export class AuthController {
         }
       });
     } catch (e: any) {
-      logger.error(`Register error: ${e.message}`);
+      logger.error({ err: e, message: `Register error: ${e.message}` });
       return res.status(400).json({ success: false, code: 'REGISTRATION_FAILED', message: e.message });
     }
   }
@@ -672,6 +677,7 @@ export class AuthController {
 
       if (!user) {
         // Return the same response as wrong-password to prevent account enumeration.
+        logger.warn({ action: LogAction.AUTH_LOGIN_FAILED, email: cleanEmail, mobile: cleanMobile, message: 'Invalid credentials' });
         return res.status(400).json({ success: false, code: 'LOGIN_FAILED', message: 'Invalid credentials.' });
       }
 
@@ -682,6 +688,7 @@ export class AuthController {
       // Check password — same error code/message as user-not-found to prevent enumeration.
       const isMatch = await bcrypt.compare(password, user.password);
       if (!isMatch) {
+        logger.warn({ action: LogAction.AUTH_LOGIN_FAILED, email: cleanEmail, mobile: cleanMobile, message: 'Invalid credentials' });
         return res.status(400).json({ success: false, code: 'LOGIN_FAILED', message: 'Invalid credentials.' });
       }
 
@@ -694,7 +701,7 @@ export class AuthController {
             deletedAt: null
           }
         });
-        logger.info(`Reactivated user via password login: id=${user.id}`);
+        logger.info({ action: LogAction.AUTH_LOGIN, userId: user.id, message: 'Reactivated user via password login' });
       }
 
       // Generate session & tokens via facade
@@ -713,6 +720,7 @@ export class AuthController {
 
       setAuthCookies(res, result.accessToken, result.refreshToken, !!rememberDevice);
 
+      logger.info({ action: LogAction.AUTH_LOGIN, userId: user.id, message: 'User logged in successfully' });
       return res.status(200).json({
         success: true,
         message: 'Logged in successfully.',
@@ -734,7 +742,7 @@ export class AuthController {
         },
       });
     } catch (e: any) {
-      logger.error(`Login error: ${e.message}`);
+      logger.error({ err: e, message: `Login error: ${e.message}` });
       return res.status(400).json({ success: false, code: 'LOGIN_FAILED', message: e.message });
     }
   }
@@ -982,14 +990,17 @@ export class AuthController {
       });
     } catch (e: any) {
       // Never expose internal error details to the client — they could leak token structure
-      logger.error(`Google Login error: ${e.message}`);
+      logger.error({ err: e, message: `Google Login error: ${e.message}` });
       return res.status(400).json({ success: false, code: 'GOOGLE_LOGIN_FAILED', message: 'Google Sign-In failed. Please try again.' });
     }
   }
 
   async checkUsername(req: Request, res: Response, next: NextFunction) {
     try {
-      const { username } = req.query as { username?: string };
+      let { username } = req.query as { username?: string };
+      if (!username) {
+        username = req.params.username || req.body.username;
+      }
 
       if (!username || typeof username !== 'string') {
         return res.status(400).json({ success: false, code: 'INVALID_QUERY', message: 'username query parameter is required.' });
@@ -1013,7 +1024,7 @@ export class AuthController {
 
       return res.status(200).json({ success: true, available: !existing });
     } catch (e: any) {
-      logger.error(`checkUsername error: ${e.message}`);
+      logger.error({ err: e, message: `checkUsername error: ${e.message}` });
       return res.status(500).json({ success: false, code: 'CHECK_USERNAME_FAILED', message: 'Could not check username availability.' });
     }
   }
@@ -1177,7 +1188,7 @@ export class AuthController {
         data: result,
       });
     } catch (e: any) {
-      logger.error(`Admin login error: ${e.message}`);
+      logger.error({ err: e, message: `Admin login error: ${e.message}` });
       return res.status(400).json({ success: false, code: 'ADMIN_LOGIN_FAILED', message: e.message });
     }
   }

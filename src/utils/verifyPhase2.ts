@@ -61,21 +61,21 @@ async function runTest() {
   // Query feed page 1 (limit 2)
   console.log('Fetching Page 1 (limit: 2)...');
   const page1 = await postService.getFeed(userId, { limit: 2 });
-  console.log('Page 1 items count:', page1.length);
-  if (page1.length !== 2) {
+  console.log('Page 1 items count:', page1.posts.length);
+  if (page1.posts.length !== 2) {
     throw new Error('Expected 2 items in page 1');
   }
-  const lastPostId = page1[1].id;
+  const lastPostId = page1.posts[1].id;
   console.log('Last Post ID on Page 1:', lastPostId);
 
   // Query feed page 2 using lastPostId as cursor
   console.log('Fetching Page 2 with cursor...');
   const page2 = await postService.getFeed(userId, { limit: 2, cursor: lastPostId });
-  console.log('Page 2 items count:', page2.length);
-  if (page2.length !== 1) {
+  console.log('Page 2 items count:', page2.posts.length);
+  if (page2.posts.length !== 1) {
     throw new Error('Expected 1 item in page 2 (total 3 posts)');
   }
-  console.log('Page 2 Post ID:', page2[0].id);
+  console.log('Page 2 Post ID:', page2.posts[0].id);
 
   // 3. Saved Collections & Validation Guards
   console.log('\n--- Test 3: Saved Collection creation ---');

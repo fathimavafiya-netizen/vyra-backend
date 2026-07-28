@@ -2,10 +2,6 @@ import request from 'supertest';
 import server from '../server';
 
 describe('Web and Mobile Compatibility Tests', () => {
-  afterAll((done) => {
-    server.close(done);
-  });
-
   describe('Web Compatibility (CORS & Headers)', () => {
     it('should return CORS headers allowing cross-origin requests for web browsers', async () => {
       const response = await request(server)
@@ -31,14 +27,14 @@ describe('Web and Mobile Compatibility Tests', () => {
     it('should correctly accept and respond to mobile user agents (iOS/Android)', async () => {
       const iosResponse = await request(server)
         .get('/health')
-        .set('User-Agent', 'VyraApp/1.0 (iPhone; iOS 15.0; Scale/3.00)');
+        .set('User-Agent', 'SociallApp/1.0 (iPhone; iOS 15.0; Scale/3.00)');
 
       expect(iosResponse.status).toBe(200);
       expect(iosResponse.body.success).toBe(true);
 
       const androidResponse = await request(server)
         .get('/health')
-        .set('User-Agent', 'VyraApp/1.0 (Android 12; Mobile; rv:68.0)');
+        .set('User-Agent', 'SociallApp/1.0 (Android 12; Mobile; rv:68.0)');
 
       expect(androidResponse.status).toBe(200);
       expect(androidResponse.body.success).toBe(true);

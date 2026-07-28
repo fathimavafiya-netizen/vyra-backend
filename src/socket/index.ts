@@ -13,11 +13,19 @@ import logger from '../utils/logger';
 import tokenService from '../auth/services/TokenService';
 import { registerSocketRelay } from '../utils/socketRelay';
 import SocketGatewayCluster from './SocketGatewayCluster';
+import eventBus from '../queue/EventBus';
 
 export default function initSocketIO(io: Server) {
   SocketGatewayCluster.configureAdapter(io);
   registerSocketRelay(io);
   notificationService.setIo(io);
+
+  // Subscribe to background upload progress events and relay them to clients
+  eventBus.subscribe('upload.progress', async (payload: any) => {
+    if (payload.userId) {
+      io.to(`user:${payload.userId}`).emit('media_upload_progress', payload);
+    }
+  });
 
   // ─── JWT Handshake Auth Middleware ───
   io.use(async (socket: Socket, next) => {

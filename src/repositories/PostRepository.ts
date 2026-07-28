@@ -1,4 +1,5 @@
 import prisma from '../config/db';
+import { PostStatus } from '@prisma/client';
 
 export const PostType = {
   POST: 'POST',
@@ -27,6 +28,7 @@ export class PostRepository {
     duration?: number;
     thumbnailUrl?: string;
     originalPostId?: string;
+    status?: string;
   }) {
     // 1. First find or create hashtags
     const hashtagConnections = [];
@@ -54,6 +56,7 @@ export class PostRepository {
         duration: data.duration,
         thumbnailUrl: data.thumbnailUrl,
         originalPostId: data.originalPostId,
+        status: (data.status as PostStatus) || PostStatus.PUBLISHED,
         media: data.media ? {
           create: data.media.map(m => ({
             userId: data.userId,
@@ -118,6 +121,7 @@ export class PostRepository {
     const where: any = {
       userId: { in: followingIds },
       isHidden: false,
+      status: 'PUBLISHED',
       deletedAt: null,
     };
 
@@ -128,7 +132,7 @@ export class PostRepository {
       if (pType === 'LONG_VIDEO') pType = 'VIDEO';
       where.type = pType;
     } else {
-      where.type = { not: 'STORY' }; // Exclude stories
+      where.type = { notIn: ['STORY'] }; // Exclude stories from home feed
     }
 
     // 2. Search keyword filter
@@ -143,15 +147,16 @@ export class PostRepository {
     }
 
     // 3. Sorting logic
-    let orderBy: any = { createdAt: 'desc' }; // default: newest
+    let orderBy: any = [{ createdAt: 'desc' }, { id: 'desc' }]; // default: newest
     if (options.sort) {
       const sortLower = options.sort.toLowerCase();
       if (sortLower === 'popular') {
-        orderBy = { likes: { _count: 'desc' } };
+        orderBy = [{ likes: { _count: 'desc' } }, { createdAt: 'desc' }, { id: 'desc' }];
       } else if (sortLower === 'trending') {
         orderBy = [
           { likes: { _count: 'desc' } },
-          { createdAt: 'desc' }
+          { createdAt: 'desc' },
+          { id: 'desc' }
         ];
       }
     }
@@ -163,7 +168,7 @@ export class PostRepository {
       include: {
         media: { orderBy: { order: 'asc' } },
         user: { include: { profile: true } },
-        likes: true,
+        likes: { select: { userId: true } },
         hashtags: { include: { hashtag: true } },
         comments: {
           include: {
@@ -195,6 +200,7 @@ export class PostRepository {
     const limit = options.limit ?? 10;
     const where: any = {
       isHidden: false,
+      status: 'PUBLISHED',
       deletedAt: null,
     };
 
@@ -205,7 +211,7 @@ export class PostRepository {
       if (pType === 'LONG_VIDEO') pType = 'VIDEO';
       where.type = pType;
     } else {
-      where.type = { not: 'STORY' }; // Exclude stories
+      where.type = { notIn: ['STORY'] }; // Exclude stories
     }
 
     // 2. Search keyword filter
@@ -220,15 +226,16 @@ export class PostRepository {
     }
 
     // 3. Sorting logic
-    let orderBy: any = { createdAt: 'desc' }; // default: newest
+    let orderBy: any = [{ createdAt: 'desc' }, { id: 'desc' }]; // default: newest
     if (options.sort) {
       const sortLower = options.sort.toLowerCase();
       if (sortLower === 'popular') {
-        orderBy = { likes: { _count: 'desc' } };
+        orderBy = [{ likes: { _count: 'desc' } }, { createdAt: 'desc' }, { id: 'desc' }];
       } else if (sortLower === 'trending') {
         orderBy = [
           { likes: { _count: 'desc' } },
-          { createdAt: 'desc' }
+          { createdAt: 'desc' },
+          { id: 'desc' }
         ];
       }
     }
@@ -240,7 +247,7 @@ export class PostRepository {
       include: {
         media: { orderBy: { order: 'asc' } },
         user: { include: { profile: true } },
-        likes: true,
+        likes: { select: { userId: true } },
         hashtags: { include: { hashtag: true } },
         comments: {
           include: {
@@ -267,13 +274,14 @@ export class PostRepository {
       where: {
         userId,
         isHidden: false,
+        status: 'PUBLISHED',
         deletedAt: null,
         type: { not: 'STORY' },
       },
       include: {
         media: { orderBy: { order: 'asc' } },
         user: { include: { profile: true } },
-        likes: true,
+        likes: { select: { userId: true } },
         hashtags: { include: { hashtag: true } },
         comments: {
           include: {
@@ -299,7 +307,7 @@ export class PostRepository {
       include: {
         media: true,
         user: { include: { profile: true } },
-        likes: true,
+        likes: { select: { userId: true } },
         hashtags: { include: { hashtag: true } },
         comments: {
           include: { user: { include: { profile: true } } },

@@ -11,5 +11,6 @@ router.get('/', searchController.search);
 router.get('/recent', searchController.getRecent);
 router.get('/trending', searchController.getTrending);
 router.get('/suggestions', searchController.getSuggestions);
+router.get('/suggested-users', searchController.getSuggestedUsers);
 
 export default router;

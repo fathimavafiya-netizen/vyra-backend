@@ -2,10 +2,18 @@ import { Router } from 'express';
 import userController from '../controllers/UserController';
 import authMiddleware from '../middleware/authMiddleware';
 
+import authController from '../auth/controllers/AuthController';
+import validate from '../middleware/validationMiddleware';
+import validators from '../auth/validators/auth.validator';
+
 const router = Router();
 
+// Aliases for registration just in case frontend calls /api/v1/users/register
+router.post('/register', validate(validators.registerSchema), authController.register as any);
+router.post('/signup', validate(validators.registerSchema), authController.register as any);
+
 // Secure all user routes with authMiddleware
-router.use(authMiddleware);
+router.use(authMiddleware as any);
 
 router.get('/profile', userController.getProfile);
 router.get('/profile/username/:username', userController.getProfileByUsername);

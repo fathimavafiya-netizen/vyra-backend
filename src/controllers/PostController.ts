@@ -72,6 +72,7 @@ export async function formatPostResponse(p: any, viewerId?: string): Promise<any
     duration: p.duration || 0,
     thumbnailUrl: p.thumbnailUrl || '',
     musicTrackId: p.musicTrackId || null,
+    originalPostId: p.originalPostId || (p.originalPost ? p.originalPost.id : null),
     originalPost: p.originalPost ? {
       _id: p.originalPost.id,
       user: {
@@ -95,6 +96,20 @@ export async function formatPostResponse(p: any, viewerId?: string): Promise<any
 }
 
 export class PostController {
+  async generateTemplate(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      const { templateId, imageUrl, text } = req.body;
+      // In a real implementation, this would trigger an FFmpeg worker or call a 3rd party template API
+      // For now, we simulate backend compilation and return a compiled sample video
+      return res.status(200).json({
+        success: true,
+        videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4'
+      });
+    } catch (e: any) {
+      next(e);
+    }
+  }
+
   async getFeed(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
       const userId = req.user?.id;
@@ -132,7 +147,7 @@ export class PostController {
         return res.status(200).json({ success: true, posts: formattedStreams });
       }
 
-      const posts = await postService.getFeed(userId, {
+      const { posts, nextCursor, hasMore } = await postService.getFeed(userId, {
         limit,
         cursor,
         type,
@@ -142,7 +157,7 @@ export class PostController {
       
       const formattedPosts = await Promise.all(posts.map(p => formatPostResponse(p, userId)));
 
-      return res.status(200).json({ success: true, posts: formattedPosts });
+      return res.status(200).json({ success: true, posts: formattedPosts, nextCursor, hasMore });
     } catch (e: any) {
       return res.status(400).json({ success: false, message: e.message });
     }
@@ -178,6 +193,7 @@ export class PostController {
         musicTrackId: req.body.musicTrackId,
         thumbnailUrl: req.body.thumbnailUrl,
         originalPostId: req.body.originalPostId,
+        status: req.body.status,
       });
 
       return res.status(201).json({

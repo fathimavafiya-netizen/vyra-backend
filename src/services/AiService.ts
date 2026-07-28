@@ -99,7 +99,7 @@ class GeminiProvider implements AiProvider {
     } catch {
       // Regexp fallback if JSON parse fails
       const hashtags = text.match(/#[a-zA-Z0-9_]+/g);
-      return hashtags ? hashtags.map((h: string) => h.replace('#', '')) : ['vyra', 'aesthetic', 'trending'];
+      return hashtags ? hashtags.map((h: string) => h.replace('#', '')) : ['sociall', 'aesthetic', 'trending'];
     }
   }
 
@@ -127,12 +127,20 @@ class GeminiProvider implements AiProvider {
 class MockProvider implements AiProvider {
   async generateCaption(imageUrl: string): Promise<string> {
     logger.debug(`[Mock AI] Simulating caption generation`);
-    return '✨ Living life in full color! Capturing the beautiful moments. 💫 #vibes #aesthetic #vyra';
+    const mockCaptions = [
+      '✨ Living life in full color! Capturing the beautiful moments. 💫 #vibes #aesthetic #sociall',
+      '🌟 Exploring new horizons today. The journey is just as beautiful as the destination! ✈️ #adventure #explore',
+      '🔥 Setting my own trends and loving every second of it. ⚡ #fashion #lifestyle',
+      '☕ Quiet moments and good vibes. That is all I need right now. 🌿 #chill #peace',
+      '💡 Never stop creating. Your imagination is your only limit! 🎨 #creative #inspiration',
+      '🚀 Dream big, work hard, stay focused, and surround yourself with good people. #motivation #hustle'
+    ];
+    return mockCaptions[Math.floor(Math.random() * mockCaptions.length)];
   }
 
   async suggestHashtags(captionText: string): Promise<string[]> {
     logger.debug(`[Mock AI] Simulating hashtag suggestions`);
-    return ['vyra', 'aesthetic', 'trending', 'creators', 'modern'];
+    return ['sociall', 'aesthetic', 'trending', 'creators', 'modern'];
   }
 
   async moderateContent(imageUrl: string): Promise<{ safe: boolean; labels: string[] }> {
@@ -198,26 +206,27 @@ export class AiService {
         let resultUrl = imageUrl;
 
         if (type === 'STYLE_TRANSFER') {
-          const stylePresets: any = {
-            anime: 'https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?auto=format&fit=crop&w=800&q=80',
-            // Deprecated backward compatibility alias
-            // TODO: remove legacy 'ghibli' key after client version v1.2.0 release
-            ghibli: 'https://images.unsplash.com/photo-1578632767115-351597cf2477?auto=format&fit=crop&w=800&q=80',
-            cartoon: 'https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?auto=format&fit=crop&w=800&q=80',
-            watercolor: 'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?auto=format&fit=crop&w=800&q=80',
-            sketch: 'https://images.unsplash.com/photo-1513364776144-60967b0f800f?auto=format&fit=crop&w=800&q=80',
-          };
-          resultUrl = stylePresets[extraOption.toLowerCase()] || stylePresets.anime;
+          // Use Cloudinary transformations for AI Style Transfer
+          if (imageUrl.includes('res.cloudinary.com')) {
+            const uploadParts = imageUrl.split('/upload/');
+            if (uploadParts.length === 2) {
+              const effect = extraOption.toLowerCase() === 'anime' || extraOption.toLowerCase() === 'ghibli' ? 'e_art:cartoonify' : `e_art:${extraOption.toLowerCase()}`;
+              resultUrl = `${uploadParts[0]}/upload/${effect}/${uploadParts[1]}`;
+            }
+          } else {
+            resultUrl = imageUrl; // Fallback if not Cloudinary
+          }
         } else if (type === 'BACKGROUND_REPLACE') {
-          const backgroundPresets: any = {
-            beach: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=800&q=80',
-            office: 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=800&q=80',
-            mountain: 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=800&q=80',
-            temple: 'https://images.unsplash.com/photo-1548013146-72479768bada?auto=format&fit=crop&w=800&q=80',
-            space: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=800&q=80',
-            forest: 'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&w=800&q=80',
-          };
-          resultUrl = backgroundPresets[extraOption.toLowerCase()] || backgroundPresets.beach;
+          // Use Cloudinary Generative Background Replace
+          if (imageUrl.includes('res.cloudinary.com')) {
+            const uploadParts = imageUrl.split('/upload/');
+            if (uploadParts.length === 2) {
+              const prompt = encodeURIComponent(extraOption.toLowerCase());
+              resultUrl = `${uploadParts[0]}/upload/e_gen_background_replace:prompt_${prompt}/${uploadParts[1]}`;
+            }
+          } else {
+            resultUrl = imageUrl; // Fallback if not Cloudinary
+          }
         }
 
         aiJobs.set(jobId, {

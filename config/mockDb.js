@@ -10,14 +10,14 @@ const mockDb = {
   seed: function() {
     if (this.users.length > 0) return;
 
-    console.log('🌱 Seeding mock in-memory database with initial Vyra content...');
+    console.log('🌱 Seeding mock in-memory database with initial Sociall content...');
 
     // Mock Users
     const usersList = [
       {
         _id: '60c72b2f9b1d8b2badcf5001',
         name: 'Aria Sharma',
-        email: 'aria@vyra.com',
+        email: 'aria@sociall.com',
         mobile: '+919876543210',
         password: 'hashedpassword',
         profilePic: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=150&h=150&q=80',
@@ -30,7 +30,7 @@ const mockDb = {
       {
         _id: '60c72b2f9b1d8b2badcf5002',
         name: 'Kabir Verma',
-        email: 'kabir@vyra.com',
+        email: 'kabir@sociall.com',
         mobile: '+919999888877',
         password: 'hashedpassword',
         profilePic: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=150&h=150&q=80',
@@ -43,7 +43,7 @@ const mockDb = {
       {
         _id: '60c72b2f9b1d8b2badcf5003',
         name: 'Zara Taylor',
-        email: 'zara@vyra.com',
+        email: 'zara@sociall.com',
         mobile: '+12025550143',
         password: 'hashedpassword',
         profilePic: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&h=150&q=80',

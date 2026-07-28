@@ -116,9 +116,9 @@ export class NotificationService {
       }
 
       // 3. Check user preferences
-      const settings = await prisma.userSettings.findUnique({ where: { userId } });
-      if (settings) {
-        const enabled = this.isEnabledBySettings(type, settings);
+      const prefs = await prisma.notificationPreferences.findUnique({ where: { userId } });
+      if (prefs) {
+        const enabled = this.isEnabledBySettings(type, prefs);
         if (!enabled) {
           logger.debug(`🔕 Notification suppressed by preferences: type=${type}, user=${userId}`);
           return null;
@@ -278,26 +278,33 @@ export class NotificationService {
   // Helpers
   // ─────────────────────────────────────────
 
-  private isEnabledBySettings(type: string, settings: any): boolean {
+  private isEnabledBySettings(type: string, prefs: any): boolean {
     switch (type) {
       case 'LIKE':
       case 'POST_LIKE':
       case 'STORY_LIKE':
-        return settings.likesEnabled;
+        return prefs.likes;
       case 'COMMENT':
       case 'POST_COMMENT':
+        return prefs.comments;
       case 'COMMENT_REPLY':
-        return settings.commentsEnabled;
+        return prefs.replies;
       case 'FOLLOW':
       case 'NEW_FOLLOWER':
       case 'FOLLOW_REQUEST':
       case 'FOLLOW_ACCEPTED':
-        return settings.followersEnabled;
+        return prefs.followers;
+      case 'MENTION':
+      case 'POST_MENTION':
+      case 'STORY_MENTION':
+        return prefs.mentions;
       case 'NEW_MESSAGE':
-        return settings.messagesEnabled;
       case 'MISSED_CALL':
       case 'CALL_ENDED':
-        return settings.messagesEnabled; // use messages pref
+        return prefs.messages;
+      case 'MARKETING':
+      case 'PRODUCT_UPDATE':
+        return prefs.marketing;
       default:
         return true;
     }

@@ -46,7 +46,7 @@ CREATE TABLE "Profile" (
     "username" TEXT NOT NULL,
     "profilePic" TEXT NOT NULL DEFAULT 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&h=150&q=80',
     "coverPic" TEXT NOT NULL DEFAULT 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=800&h=300&q=80',
-    "bio" TEXT NOT NULL DEFAULT 'Hey there! I am using Vyra.',
+    "bio" TEXT NOT NULL DEFAULT 'Hey there! I am using Sociall.',
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 

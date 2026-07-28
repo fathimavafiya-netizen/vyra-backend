@@ -1,77 +1,61 @@
 import sharp from 'sharp';
-import ffmpeg from 'fluent-ffmpeg';
 import path from 'path';
 import fs from 'fs';
+import os from 'os';
 import storageProvider from '../security/StorageProvider';
 
 class UploadService {
-  constructor() {
-  }
+  constructor() {}
 
   /**
-   * Validates file size and mimetype constraints
+   * Processes and compresses an image into WebP format from disk
    */
-  validateFile(size: number, mimeType: string): { valid: boolean; error?: string } {
-    const allowedImageTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
-    const allowedVideoTypes = ['video/mp4', 'video/quicktime', 'video/x-matroska'];
-
-    const isImg = allowedImageTypes.includes(mimeType);
-    const isVid = allowedVideoTypes.includes(mimeType);
-
-    if (!isImg && !isVid) {
-      return { valid: false, error: 'Unsupported file type. Only standard images and videos are supported.' };
-    }
-
-    if (isImg && size > 10 * 1024 * 1024) { // 10MB limit
-      return { valid: false, error: 'Image file size exceeds the 10MB limit.' };
-    }
-
-    if (isVid && size > 100 * 1024 * 1024) { // 100MB limit
-      return { valid: false, error: 'Video file size exceeds the 100MB limit.' };
-    }
-
-    return { valid: true };
-  }
-
-  /**
-   * Processes and compresses an image into WebP format
-   */
-  async processImage(buffer: Buffer, originalName: string): Promise<string> {
-    const filename = `processed_${Date.now()}_${path.parse(originalName).name}.webp`;
+  async processImageFromPath(filePath: string, originalName: string): Promise<{ secureUrl: string, publicId: string }> {
+    const filename = `sociall-processed_${Date.now()}_${path.parse(originalName).name}.webp`;
+    const tempOutputPath = path.join(os.tmpdir(), filename);
     
-    // Compress and convert image to WebP using sharp
-    const processedBuffer = await sharp(buffer)
+    // Compress and convert image to WebP using sharp, saving to temp file
+    await sharp(filePath)
       .resize({ width: 1200, height: 1200, fit: 'inside', withoutEnlargement: true })
       .webp({ quality: 80 })
-      .toBuffer();
+      .toFile(tempOutputPath);
 
-    return storageProvider.uploadFile(filename, processedBuffer, 'image/webp');
+    try {
+      const result = await storageProvider.uploadFileFromPath(filename, tempOutputPath, 'image/webp');
+      return { secureUrl: result.secureUrl, publicId: result.publicId };
+    } finally {
+      // Clean up the processed temp file (the original filePath will be cleaned up by the queue worker)
+      try {
+        if (fs.existsSync(tempOutputPath)) await fs.promises.unlink(tempOutputPath);
+      } catch (e) {}
+    }
   }
 
   /**
-   * Processes a video and generates a thumbnail cover frame
+   * Processes a video using Cloudinary eager transformations from disk
    */
-  async processVideo(
-    videoBuffer: Buffer,
+  async processVideoFromPath(
+    filePath: string,
     originalName: string
-  ): Promise<{ videoUrl: string; thumbnailUrl: string }> {
-    const baseName = `processed_${Date.now()}_${path.parse(originalName).name}`;
-    const videoFilename = `${baseName}.mp4`;
-
-    // Save the raw video file using our storage provider
-    const videoUrl = await storageProvider.uploadFile(videoFilename, videoBuffer, 'video/mp4');
-
-    // Cloudinary automatically generates thumbnails for videos by changing the extension to .jpg
-    // Example: https://res.cloudinary.com/demo/video/upload/v1234/dog.mp4 -> dog.jpg
-    let thumbnailUrl = 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe'; // Default fallback thumbnail
+  ): Promise<{ secureUrl: string; publicId: string; thumbnailUrl: string; duration?: number }> {
+    const baseName = `sociall-processed_${Date.now()}_${path.parse(originalName).name}`;
     
-    if (videoUrl.includes('res.cloudinary.com')) {
-      const urlParts = videoUrl.split('.');
-      urlParts.pop(); // remove .mp4
+    // Upload the raw video file and rely on Cloudinary eager transformations
+    const result = await storageProvider.uploadFileFromPath(baseName, filePath, 'video/mp4');
+
+    let thumbnailUrl = 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe'; // Default fallback
+    if (result.secureUrl.includes('res.cloudinary.com')) {
+      const urlParts = result.secureUrl.split('.');
+      urlParts.pop(); // remove original extension
       thumbnailUrl = `${urlParts.join('.')}.jpg`;
     }
 
-    return { videoUrl, thumbnailUrl };
+    return { 
+      secureUrl: result.secureUrl, 
+      publicId: result.publicId, 
+      thumbnailUrl, 
+      duration: result.duration 
+    };
   }
 }
 

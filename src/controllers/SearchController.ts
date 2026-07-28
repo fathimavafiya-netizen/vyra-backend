@@ -54,6 +54,18 @@ export class SearchController {
       return res.status(400).json({ success: false, message: e.message });
     }
   }
+
+  async getSuggestedUsers(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      const userId = req.user?.id;
+      if (!userId) throw new Error('Unauthorized');
+
+      const suggestedUsers = await searchService.getSuggestedUsers(userId);
+      return res.status(200).json({ success: true, suggestedUsers });
+    } catch (e: any) {
+      return res.status(400).json({ success: false, message: e.message });
+    }
+  }
 }
 
 export default new SearchController();

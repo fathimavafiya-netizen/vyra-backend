@@ -20,6 +20,12 @@ import { startCleanupScheduler } from './utils/cron';
 import './queue/MediaProcessingQueue';
 import './queue/PushNotificationQueue';
 import './queue/LiveNotificationQueue';
+import { initMediaUploadQueue } from './queue/MediaUploadQueue';
+import { initTemplateCompileQueue } from './queue/TemplateCompileQueue';
+import { createChildLogger } from './logger/childLogger';
+
+initMediaUploadQueue();
+initTemplateCompileQueue();
 
 // ─── STARTUP SECURITY GUARDS ─────────────────────────────────────────────────
 // Google OAuth: hard-fail in production if GOOGLE_CLIENT_ID is not set.
@@ -42,8 +48,9 @@ app.set('trust proxy', 1);
 // Initialize Socket.IO
 const io = new Server(server, {
   cors: {
-    origin: '*',
+    origin: true,
     methods: ['GET', 'POST'],
+    credentials: true,
   },
 });
 
@@ -87,7 +94,10 @@ app.use(
 );
 
 // 5. Permissive CORS (can be tightened in prod config)
-app.use(cors());
+app.use(cors({
+  origin: true,
+  credentials: true
+}));
 
 // 6. Security headers mapping Permissions Policy & COOP/CORP
 app.use((req, res, next) => {
@@ -137,9 +147,9 @@ app.get('/docs', (req, res) => {
   res.setHeader('Content-Type', 'text/html');
   res.send(`
     <html>
-      <head><title>Vyra OpenAPI 3.1 Documentation</title></head>
+      <head><title>Sociall OpenAPI 3.1 Documentation</title></head>
       <body style="font-family: Arial, sans-serif; padding: 40px; background: #0c0d14; color: #fff;">
-        <h1>Vyra API v1.0 Documentation (OpenAPI 3.1)</h1>
+        <h1>Sociall API v1.0 Documentation (OpenAPI 3.1)</h1>
         <p>Documentation endpoint successfully configured. Ready for UI mapping.</p>
       </body>
     </html>
@@ -156,7 +166,7 @@ app.use('/api/v1', v1Router);
 app.get('/', (req, res) => {
   res.json({
     status: 'online',
-    appName: 'Vyra API Server (v1.0 TypeScript)',
+    appName: 'Sociall API Server (v1.0 TypeScript)',
     time: new Date(),
     environment: env.NODE_ENV,
   });
@@ -172,9 +182,39 @@ app.use(errorMiddleware);
 startCleanupScheduler();
 
 // Start Server
-const PORT = env.PORT;
-server.listen(PORT, () => {
-  logger.info(`🚀 Vyra Server running in ${env.NODE_ENV} mode on port ${PORT}`);
-});
+if (env.NODE_ENV !== 'test') {
+  const PORT = env.PORT;
+  server.listen(PORT as number, '0.0.0.0', () => {
+    logger.info({
+      action: 'SERVER_START',
+      version: '1.0.0', // Read from package.json in a real app, hardcoded as example
+      environment: env.NODE_ENV,
+      nodeVersion: process.version,
+      port: PORT,
+    }, `🚀 Sociall Server running in ${env.NODE_ENV} mode on port ${PORT}`);
+  });
+}
+
+// Graceful Shutdown
+const SHUTDOWN_TIMEOUT = 10000;
+
+const gracefulShutdown = (signal: string) => {
+  logger.info({ action: 'SERVER_STOPPING', signal }, 'Initiating graceful shutdown...');
+  
+  const timeoutId = setTimeout(() => {
+    logger.error({ action: 'SERVER_STOP_TIMEOUT' }, 'Could not close connections in time, forcefully shutting down');
+    process.exit(1);
+  }, SHUTDOWN_TIMEOUT);
+
+  // Stop background queue if accessible, then close server
+  server.close(() => {
+    clearTimeout(timeoutId);
+    logger.info({ action: 'SERVER_STOPPED' }, 'Server stopped gracefully');
+    process.exit(0);
+  });
+};
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
 export default server;

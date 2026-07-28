@@ -1,5 +1,7 @@
 import redisClient from '../config/redis';
-import logger from '../utils/logger';
+import { createChildLogger } from '../logger/childLogger';
+import { LogAction } from '../logger/actions';
+const logger = createChildLogger('queue');
 import { randomUUID } from 'crypto';
 
 export interface Job {
@@ -9,6 +11,7 @@ export interface Job {
   priority: 'high' | 'medium' | 'low';
   attempts: number;
   createdAt: number;
+  requestId?: string;
 }
 
 type JobHandler = (payload: any) => Promise<boolean>;
@@ -32,13 +35,13 @@ class QueueManager {
    */
   registerWorker(type: string, handler: JobHandler) {
     this.handlers.set(type, handler);
-    logger.info(`[Queue] Worker registered for job type: ${type}`);
+    logger.info({ message: `Worker registered for job type: ${type}` });
   }
 
   /**
    * Enqueues a new background job with a specified priority
    */
-  async addJob(type: string, payload: any, priority: 'high' | 'medium' | 'low' = 'medium', attempts = 0) {
+  async addJob(type: string, payload: any, priority: 'high' | 'medium' | 'low' = 'medium', attempts = 0, requestId?: string) {
     const job: Job = {
       id: randomUUID(),
       type,
@@ -46,6 +49,7 @@ class QueueManager {
       priority,
       attempts,
       createdAt: Date.now(),
+      requestId,
     };
 
     try {
@@ -63,9 +67,9 @@ class QueueManager {
           return priorityWeight[b.priority] - priorityWeight[a.priority];
         });
       }
-      logger.debug(`[Queue] Added job [${job.id}] type=${type} priority=${priority} attempts=${attempts}`);
+      logger.info({ action: LogAction.QUEUE_ENQUEUE, jobId: job.id, jobType: type, priority, attempts, message: 'Added job' });
     } catch (err: any) {
-      logger.error(`[Queue] Failed to add job: ${err.message}`);
+      logger.error({ action: LogAction.QUEUE_FAIL, jobType: type, err, message: `Failed to add job: ${err.message}` });
       // Fail-open: push locally
       this.localQueue.push(job);
     }
@@ -112,32 +116,41 @@ class QueueManager {
   private async executeJob(job: Job) {
     const handler = this.handlers.get(job.type);
     if (!handler) {
-      logger.error(`[Queue] No handler registered for job type: ${job.type}`);
+      logger.error({ action: LogAction.QUEUE_FAIL, jobId: job.id, jobType: job.type, message: `No handler registered for job type: ${job.type}` });
       return;
     }
 
+    const jobLogger = createChildLogger(`queue:${job.type}`, {
+      requestId: job.requestId,
+      jobId: job.id,
+      queueName: job.type,
+      attempt: job.attempts + 1,
+      retryCount: job.attempts,
+    });
+
     try {
       job.attempts++;
+      jobLogger.info({ action: LogAction.QUEUE_PROCESS, message: 'Processing job' });
       const success = await handler(job.payload);
       if (success) {
-        logger.debug(`[Queue] Job [${job.id}] completed successfully`);
+        jobLogger.info({ action: LogAction.QUEUE_SUCCESS, message: 'Job completed successfully' });
       } else {
-        await this.handleJobFailure(job, new Error('Handler returned false status'));
+        await this.handleJobFailure(job, new Error('Handler returned false status'), jobLogger);
       }
     } catch (err: any) {
-      await this.handleJobFailure(job, err);
+      await this.handleJobFailure(job, err, jobLogger);
     }
   }
 
-  private async handleJobFailure(job: Job, err: any) {
-    logger.warn(`[Queue] Job [${job.id}] failed (Attempt ${job.attempts}): ${err.message}`);
+  private async handleJobFailure(job: Job, err: any, jobLogger: any = logger) {
+    jobLogger.warn({ action: LogAction.QUEUE_FAIL, err, message: `Job failed: ${err.message}` });
 
     if (job.attempts < 3) {
       // Re-enqueue for retry
-      logger.info(`[Queue] Re-enqueuing job [${job.id}] for retry`);
-      await this.addJob(job.type, job.payload, job.priority, job.attempts);
+      jobLogger.info({ action: LogAction.QUEUE_RETRY, message: 'Re-enqueuing job for retry' });
+      await this.addJob(job.type, job.payload, job.priority, job.attempts, job.requestId);
     } else {
-      logger.error(`[Queue] Job [${job.id}] exceeded max retries. Permanently failed.`);
+      jobLogger.error({ action: LogAction.QUEUE_FAIL, message: 'Job exceeded max retries. Permanently failed.' });
       
       // Update story DB status on permanent failure
       if (job.type === 'media_processing') {

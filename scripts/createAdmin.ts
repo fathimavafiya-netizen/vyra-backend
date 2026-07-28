@@ -9,13 +9,13 @@ async function createAdmin() {
     
     // Check if admin already exists
     let admin = await prisma.user.findUnique({
-      where: { email: 'admin@vyra.com' }
+      where: { email: 'admin@sociall.com' }
     });
 
     if (admin) {
       // Ensure role is ADMIN
       await prisma.user.update({
-        where: { email: 'admin@vyra.com' },
+        where: { email: 'admin@sociall.com' },
         data: { role: 'ADMIN', password: hashedPassword }
       });
       console.log('Admin user updated successfully.');
@@ -23,7 +23,7 @@ async function createAdmin() {
       // Create new admin
       admin = await prisma.user.create({
         data: {
-          email: 'admin@vyra.com',
+          email: 'admin@sociall.com',
           password: hashedPassword,
           role: 'ADMIN',
           profile: {
@@ -41,7 +41,7 @@ async function createAdmin() {
       console.log('Admin user created successfully.');
     }
     console.log('--- ADMIN CREDENTIALS ---');
-    console.log('Email: admin@vyra.com');
+    console.log('Email: admin@sociall.com');
     console.log('Password: admin123');
     console.log('-------------------------');
   } catch (error) {

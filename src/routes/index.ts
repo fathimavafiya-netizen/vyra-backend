@@ -9,9 +9,10 @@ import searchRoutes from './search';
 import aiRoutes from './ai';
 import uploadRoutes from './upload';
 import notificationRoutes from './notifications';
-import adminRoutes from './admin';
 import liveRoutes from './live';
-import insightsRoutes from './insights';
+import settingsRoutes from './settings';
+import featureRoutes from './features';
+import templateRoutes from './templates';
 
 const router = Router();
 
@@ -27,8 +28,9 @@ router.use('/search', searchRoutes);
 router.use('/ai', aiRoutes);
 router.use('/upload', uploadRoutes);
 router.use('/notifications', notificationRoutes);
-router.use('/admin', adminRoutes);
 router.use('/live', liveRoutes);
-router.use('/insights', insightsRoutes);
+router.use('/settings', settingsRoutes);
+router.use('/features', featureRoutes);
+router.use('/templates', templateRoutes);
 
 export default router;

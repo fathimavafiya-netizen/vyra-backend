@@ -10,6 +10,7 @@ cloudinary.config({
 
 export interface StorageProvider {
   uploadFile(key: string, fileBuffer: Buffer, mimeType: string): Promise<string>;
+  uploadFileFromPath(key: string, filePath: string, mimeType: string): Promise<{ secureUrl: string, publicId: string, duration?: number }>;
   deleteFile(key: string): Promise<void>;
   getSignedUrl(key: string, expiresInMinutes?: number): Promise<string>;
 }
@@ -26,7 +27,7 @@ export class CloudinaryStorageProvider implements StorageProvider {
 
       const uploadStream = cloudinary.uploader.upload_stream(
         {
-          folder: 'vyra',
+          folder: 'sociall',
           public_id: key,
           resource_type: resourceType,
           overwrite: true
@@ -48,16 +49,48 @@ export class CloudinaryStorageProvider implements StorageProvider {
     });
   }
 
+  async uploadFileFromPath(key: string, filePath: string, mimeType: string): Promise<{ secureUrl: string, publicId: string, duration?: number }> {
+    let resourceType: 'image' | 'video' | 'raw' | 'auto' = 'auto';
+    if (mimeType.startsWith('video/') || mimeType.startsWith('audio/')) {
+      resourceType = 'video';
+    } else if (mimeType.startsWith('image/')) {
+      resourceType = 'image';
+    }
+
+    try {
+      const result = await cloudinary.uploader.upload(filePath, {
+        folder: 'sociall',
+        public_id: key,
+        resource_type: resourceType,
+        overwrite: true,
+        eager: resourceType === 'video' ? [
+          { streaming_profile: 'hd', format: 'm3u8' }, // Generate HLS for adaptive streaming
+        ] : [],
+        eager_async: true // Don't block the upload response while generating eager transformations
+      });
+      
+      logger.debug(`[CloudinaryStorageProvider] File uploaded from path: ${result.secure_url}`);
+      return {
+        secureUrl: result.secure_url,
+        publicId: result.public_id,
+        duration: result.duration
+      };
+    } catch (error: any) {
+      logger.error(`[CloudinaryStorageProvider] Upload from path failed for ${key}: ${error.message}`);
+      throw error;
+    }
+  }
+
   async deleteFile(url: string): Promise<void> {
     try {
       // Extract public_id from Cloudinary URL
-      // Example: https://res.cloudinary.com/esvdcd7b/image/upload/v12345/vyra/filename.jpg
+      // Example: https://res.cloudinary.com/esvdcd7b/image/upload/v12345/sociall/filename.jpg
       const urlParts = url.split('/');
       if (urlParts.length > 0) {
         const fileWithExt = urlParts[urlParts.length - 1];
         const publicIdBase = fileWithExt.split('.')[0];
-        // In our upload config, we use folder 'vyra', so the full public_id is vyra/publicIdBase
-        // Or if the key passed to uploadFile was a path like stories/123/456, we need to extract the path after /vyra/
+        // In our upload config, we use folder 'sociall', so the full public_id is sociall/publicIdBase
+        // Or if the key passed to uploadFile was a path like stories/123/456, we need to extract the path after /sociall/
         
         // A robust way to extract public_id: find the index of the folder (e.g. upload/vXXX/)
         const uploadRegex = /\/upload\/(?:v\d+\/)?(.+)\.[a-z0-9]+$/i;

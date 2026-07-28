@@ -1,16 +1,6 @@
-import pino from 'pino';
-import env from '../config/env';
+import { logger as baseLogger } from '../logger/index';
 
-const logger = pino({
-  level: env.NODE_ENV === 'production' ? 'info' : 'debug',
-  transport: env.NODE_ENV !== 'production' ? {
-    target: 'pino-pretty',
-    options: {
-      colorize: true,
-      translateTime: 'SYS:standard',
-      ignore: 'pid,hostname',
-    },
-  } : undefined,
-});
-
-export default logger;
+// Export for backward compatibility with existing modules
+export const childLogger = baseLogger;
+export const logger = baseLogger;
+export default baseLogger;

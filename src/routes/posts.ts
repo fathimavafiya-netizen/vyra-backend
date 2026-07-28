@@ -10,6 +10,7 @@ router.use(authMiddleware);
 
 router.get('/feed', postController.getFeed);
 router.get('/user/:userId', postController.getUserPosts);
+router.post('/template', postController.generateTemplate);
 router.post('/', validateRequest(createPostSchema), postController.createPost);
 router.delete('/:id', postController.deletePost);
 

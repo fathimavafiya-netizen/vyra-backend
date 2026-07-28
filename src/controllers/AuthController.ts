@@ -18,7 +18,7 @@ const setAuthCookies = (res: Response, accessToken: string, refreshToken: string
   res.cookie('accessToken', accessToken, {
     httpOnly: true,
     secure: env.COOKIE_SECURE,
-    sameSite: 'lax',
+    sameSite: env.COOKIE_SECURE ? 'none' : 'lax',
     domain: env.COOKIE_DOMAIN || undefined,
     maxAge: 15 * 60 * 1000, // 15 mins
   });
@@ -26,7 +26,7 @@ const setAuthCookies = (res: Response, accessToken: string, refreshToken: string
   res.cookie('refreshToken', refreshToken, {
     httpOnly: true,
     secure: env.COOKIE_SECURE,
-    sameSite: 'lax',
+    sameSite: env.COOKIE_SECURE ? 'none' : 'lax',
     domain: env.COOKIE_DOMAIN || undefined,
     maxAge: cookieExpiry,
   });
@@ -36,8 +36,16 @@ const setAuthCookies = (res: Response, accessToken: string, refreshToken: string
  * Helper to clear auth cookies
  */
 const clearAuthCookies = (res: Response) => {
-  res.clearCookie('accessToken', { domain: env.COOKIE_DOMAIN || undefined });
-  res.clearCookie('refreshToken', { domain: env.COOKIE_DOMAIN || undefined });
+  res.clearCookie('accessToken', {
+    domain: env.COOKIE_DOMAIN || undefined,
+    secure: env.COOKIE_SECURE,
+    sameSite: env.COOKIE_SECURE ? 'none' : 'lax',
+  });
+  res.clearCookie('refreshToken', {
+    domain: env.COOKIE_DOMAIN || undefined,
+    secure: env.COOKIE_SECURE,
+    sameSite: env.COOKIE_SECURE ? 'none' : 'lax',
+  });
 };
 
 export class AuthController {
@@ -580,6 +588,120 @@ export class AuthController {
     } catch (e: any) {
       logger.error(`Admin login error: ${e.message}`);
       return res.status(400).json({ success: false, code: 'ADMIN_LOGIN_FAILED', message: e.message });
+    }
+  }
+  async register(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { fullName, username, email, mobile, password, deviceId, deviceName, platform, appVersion, rememberDevice, consentGiven } = req.body;
+      const result = await authService.register({
+        name: fullName,
+        email,
+        mobile,
+        password,
+        deviceId: deviceId || 'unknown-device',
+        deviceName: deviceName || 'Unknown Device',
+        platform: platform || 'WEB',
+        appVersion: appVersion || '1.0.0',
+        ipAddress: req.ip || 'unknown',
+        userAgent: req.get('user-agent') || 'unknown',
+        rememberDevice: !!rememberDevice,
+        consentGiven: !!consentGiven,
+      });
+
+      return res.status(200).json({
+        success: true,
+        message: result.message,
+        user: result.user,
+      });
+    } catch (e: any) {
+      return res.status(400).json({ success: false, code: 'REGISTER_FAILED', message: e.message });
+    }
+  }
+
+  async login(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { email, mobile, password, deviceId, deviceName, platform, appVersion, rememberDevice } = req.body;
+      
+      const result = await authService.login({
+        email,
+        mobile,
+        password,
+        deviceId: deviceId || 'unknown-device',
+        deviceName: deviceName || 'Unknown Device',
+        platform: platform || 'WEB',
+        appVersion: appVersion || '1.0.0',
+        ipAddress: req.ip || 'unknown',
+        userAgent: req.get('user-agent') || 'unknown',
+        rememberDevice: !!rememberDevice,
+      });
+
+      setAuthCookies(res, result.accessToken, result.refreshToken, !!rememberDevice);
+
+      return res.status(200).json({
+        success: true,
+        message: 'Login successful.',
+        data: result,
+      });
+    } catch (e: any) {
+      return res.status(400).json({ success: false, code: 'LOGIN_FAILED', message: e.message });
+    }
+  }
+
+  async checkUsername(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { username } = req.query;
+      if (!username || typeof username !== 'string') {
+        return res.status(400).json({ success: false, message: 'Username is required' });
+      }
+      
+      const user = await prisma.profile.findUnique({
+        where: { username: username.toLowerCase() }
+      });
+      
+      return res.status(200).json({
+        success: true,
+        available: !user,
+      });
+    } catch (e: any) {
+      return res.status(400).json({ success: false, message: e.message });
+    }
+  }
+
+  async me(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ success: false, message: 'Unauthorized' });
+      }
+      
+      const user = await userRepository.findById(userId);
+      if (!user) {
+        return res.status(404).json({ success: false, message: 'User not found' });
+      }
+      
+      const followersList = await prisma.follow.findMany({ where: { followingId: user.id } });
+      const followingList = await prisma.follow.findMany({ where: { followerId: user.id } });
+      
+      return res.status(200).json({
+        success: true,
+        user: {
+          id: user.id,
+          name: user.profile!.name,
+          username: user.profile!.username,
+          email: user.email,
+          mobile: user.mobile,
+          profilePic: user.profile!.profilePic,
+          coverPic: user.profile!.coverPic,
+          bio: user.profile!.bio,
+          role: user.role,
+          isVerified: user.isVerified,
+          mfaEnabled: user.mfaEnabled,
+          followers: followersList.map((f: any) => f.followerId),
+          following: followingList.map((f: any) => f.followingId),
+        }
+      });
+    } catch (e: any) {
+      return res.status(400).json({ success: false, message: e.message });
     }
   }
 }

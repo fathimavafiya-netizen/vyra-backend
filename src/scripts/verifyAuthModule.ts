@@ -62,7 +62,7 @@ function jestSpy() {
 }
 
 async function cleanupTestData() {
-  const testEmails = ['test_auth_user@vyra.com', 'google_v2_test@gmail.com'];
+  const testEmails = ['test_auth_user@sociall.com', 'google_v2_test@gmail.com'];
   const testPhones = ['+919876543219', '+12025550199'];
   const testUsernames = ['auth_tester_123', 'google_v2_test'];
 
@@ -102,7 +102,7 @@ async function run() {
   const registerPayload = {
     fullName: 'Auth Verification Tester',
     username: 'auth_tester_123',
-    email: 'test_auth_user@vyra.com',
+    email: 'test_auth_user@sociall.com',
     mobile: '+919876543219',
     countryCode: '+91',
     password: 'Password123!',
@@ -147,14 +147,14 @@ async function run() {
   assert(dupEmailData?.success === false && dupEmailData?.code === 'EMAIL_ALREADY_EXISTS', 'AUTH-08 Prevents duplicate email registration');
 
   // Try duplicate phone
-  const dupPhoneReq = mockRequest({ ...registerPayload, email: 'another@vyra.com', username: 'another_user_2' });
+  const dupPhoneReq = mockRequest({ ...registerPayload, email: 'another@sociall.com', username: 'another_user_2' });
   const dupPhoneRes = mockResponse();
   await authController.register(dupPhoneReq as Request, dupPhoneRes.res as Response, () => {});
   const dupPhoneData = dupPhoneRes.jsonSpy.getCall();
   assert(dupPhoneData?.success === false && dupPhoneData?.code === 'MOBILE_ALREADY_EXISTS', 'AUTH-09 Prevents duplicate phone registration');
 
   // Try duplicate username
-  const dupUserReq = mockRequest({ ...registerPayload, email: 'another@vyra.com', mobile: '+12025550199' });
+  const dupUserReq = mockRequest({ ...registerPayload, email: 'another@sociall.com', mobile: '+12025550199' });
   const dupUserRes = mockResponse();
   await authController.register(dupUserReq as Request, dupUserRes.res as Response, () => {});
   const dupUserData = dupUserRes.jsonSpy.getCall();

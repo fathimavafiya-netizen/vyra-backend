@@ -2,6 +2,10 @@ import postRepository, { PostType, MediaType } from '../repositories/PostReposit
 import cache from '../utils/cache';
 import rankPosts from '../utils/feedRanker';
 import notificationService from './NotificationService';
+import { createChildLogger } from '../logger/childLogger';
+import { LogAction } from '../logger/actions';
+
+const log = createChildLogger('posts');
 
 
 export class PostService {
@@ -16,17 +20,24 @@ export class PostService {
     musicTrackId?: string;
     thumbnailUrl?: string;
     originalPostId?: string;
+    status?: string;
   }) {
     // 1. Map type and media structure
     let pTypeStr = data.type.toUpperCase();
     if (pTypeStr === 'SHORT_VIDEO') pTypeStr = 'REEL';
     if (pTypeStr === 'LONG_VIDEO') pTypeStr = 'VIDEO';
     
-    // Auto-classify based on duration threshold of 90s
+    // Auto-classify based on duration
     if (pTypeStr === 'REEL' || pTypeStr === 'VIDEO') {
       const dur = data.duration || (data.media?.[0]?.duration);
       if (dur !== undefined && dur > 0) {
-        pTypeStr = dur <= 90 ? 'REEL' : 'VIDEO';
+        if (dur <= 30) {
+          pTypeStr = 'REEL';
+        } else if (dur > 60) {
+          pTypeStr = 'VIDEO';
+        } else {
+          throw new Error('Video duration must be 30 seconds or less for Short Videos, and greater than 60 seconds for Long Videos.');
+        }
       }
     }
     const pType = pTypeStr as PostType;
@@ -110,6 +121,7 @@ export class PostService {
       duration: data.duration,
       thumbnailUrl: data.thumbnailUrl,
       originalPostId: data.originalPostId,
+      status: data.status,
     });
 
     // Invalidate feed caches
@@ -139,6 +151,8 @@ export class PostService {
       }
     }
 
+    log.info({ action: LogAction.POST_CREATE, userId: data.userId, postId: post.id, type: pType });
+
     return post;
   }
 
@@ -149,23 +163,11 @@ export class PostService {
     limit?: number;
     cursor?: string;
   }) {
-    // Only cache the initial feed load (no search query, no cursor pagination)
-    const isInitialLoad = !options.search && !options.cursor;
-    const cacheKey = `feed:${userId}:${options.type || 'all'}:${options.sort || 'default'}`;
-
-    if (isInitialLoad) {
-      const cached = await cache.get<any[]>(cacheKey);
-      if (cached) {
-        return cached;
-      }
-    }
-
-    const sort = options.sort ? options.sort.toLowerCase() : 'newest';
-    let posts: any[] = [];
-
-    // Increase the limit pool for better ranking results if this is the initial load
     const limit = options.limit ?? 10;
-    const fetchLimit = isInitialLoad ? Math.max(50, limit * 2) : limit;
+    const fetchLimit = limit + 1; // Fetch one extra to determine hasMore
+    
+    let posts: any[] = [];
+    const sort = options.sort ? options.sort.toLowerCase() : 'newest';
 
     if (sort === 'following') {
       posts = await postRepository.findFeed(userId, { ...options, limit: fetchLimit });
@@ -173,43 +175,18 @@ export class PostService {
       posts = await postRepository.getGlobalFeed({ ...options, limit: fetchLimit });
     }
 
-    // Get list of user IDs we are following to calculate relationship scores
-    const following = await prisma.follow.findMany({
-      where: { followerId: userId },
-      select: { followingId: true },
-    });
-    const followingIds = following.map(f => f.followingId);
-
-    // Apply ranking algorithm
-    const rankedPosts = rankPosts(posts, userId, followingIds);
-
-    // Deduplicate posts so that each unique content/original post appears at most once in the feed
-    const uniquePosts: any[] = [];
-    const seenContentKeys = new Set<string>();
-
-    for (const post of rankedPosts) {
-      const displayPost = (post as any).originalPost || post;
-      const originalId = post.originalPostId || post.id;
-      const mediaUrl = (displayPost as any).mediaUrl || (displayPost.media && displayPost.media[0]?.url);
-      const contentKey = mediaUrl
-        ? `media:${mediaUrl}`
-        : ((displayPost as any).caption ? `caption:${(displayPost as any).caption.trim()}` : `id:${originalId}`);
-
-      if (!seenContentKeys.has(contentKey)) {
-        seenContentKeys.add(contentKey);
-        uniquePosts.push(post);
-      }
+    const hasMore = posts.length > limit;
+    if (hasMore) {
+      posts.pop(); // Remove the extra post
     }
 
-    // Slice to the actual limit requested by client
-    const finalPosts = uniquePosts.slice(0, limit);
+    const nextCursor = hasMore ? posts[posts.length - 1].id : null;
 
-    if (isInitialLoad && finalPosts.length > 0) {
-      // Cache the ranked feed for 120 seconds
-      await cache.set(cacheKey, finalPosts, 120);
-    }
-
-    return finalPosts;
+    return {
+      posts,
+      nextCursor,
+      hasMore
+    };
   }
 
   async getUserPosts(userId: string, limit = 50) {
@@ -243,7 +220,10 @@ export class PostService {
 
   async deletePost(postId: string, userId: string) {
     const post = await postRepository.findById(postId);
-    if (!post) throw new Error('Post not found');
+    if (!post) {
+      log.warn({ action: LogAction.POST_DELETE, userId, postId, message: 'Post not found for deletion' });
+      throw new Error('Post not found');
+    }
 
     const user = await prisma.user.findUnique({
       where: { id: userId },
@@ -253,10 +233,12 @@ export class PostService {
     const isAdmin = user?.role === 'ADMIN';
 
     if (post.userId !== userId && !isAdmin) {
+      log.warn({ action: LogAction.POST_DELETE, userId, postId, message: 'Unauthorized deletion attempt' });
       throw new Error('Unauthorized to delete this post');
     }
 
     await postRepository.delete(postId);
+    log.info({ action: LogAction.POST_DELETE, userId, postId });
     return true;
   }
 

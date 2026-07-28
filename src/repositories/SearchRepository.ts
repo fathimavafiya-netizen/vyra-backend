@@ -8,13 +8,14 @@ export class SearchRepository {
     return prisma.user.findMany({
       where: {
         OR: [
-          { profile: { name: { contains: cleanQuery } } },
-          { profile: { username: { contains: cleanQuery } } },
+          { profile: { name: { contains: cleanQuery, mode: 'insensitive' } } },
+          { profile: { username: { contains: cleanQuery, mode: 'insensitive' } } },
         ],
       },
       include: {
         profile: true,
       },
+      distinct: ['id'],
       take: limit,
       skip: offset,
     });
@@ -42,11 +43,11 @@ export class SearchRepository {
       const searchWord = cleanQuery.startsWith('#') ? cleanQuery.slice(1) : cleanQuery;
       if (searchWord) {
         where.OR = [
-          { caption: { contains: cleanQuery } },
-          { caption: { contains: searchWord } },
-          { hashtags: { some: { hashtag: { name: { contains: searchWord } } } } },
-          { user: { profile: { name: { contains: searchWord } } } },
-          { user: { profile: { username: { contains: searchWord } } } },
+          { caption: { contains: cleanQuery, mode: 'insensitive' } },
+          { caption: { contains: searchWord, mode: 'insensitive' } },
+          { hashtags: { some: { hashtag: { name: { contains: searchWord, mode: 'insensitive' } } } } },
+          { user: { profile: { name: { contains: searchWord, mode: 'insensitive' } } } },
+          { user: { profile: { username: { contains: searchWord, mode: 'insensitive' } } } },
         ];
       } else {
         // Just '#' was typed - show any post containing hashtags
@@ -71,6 +72,7 @@ export class SearchRepository {
         }
       },
       orderBy: { createdAt: 'desc' },
+      distinct: ['id'],
       take: limit,
       skip: offset,
     });
@@ -98,13 +100,14 @@ export class SearchRepository {
 
     return prisma.hashtag.findMany({
       where: {
-        name: { contains: cleanQuery },
+        name: { contains: cleanQuery, mode: 'insensitive' },
       },
       include: {
         _count: {
           select: { posts: true },
         },
       },
+      distinct: ['id'],
       take: limit,
       skip: offset,
     });
@@ -187,6 +190,50 @@ export class SearchRepository {
 
     // De-duplicate and return top suggestions
     return Array.from(new Set(suggestions)).slice(0, limit);
+  }
+
+  async getSuggestedUsers(userId: string, limit = 5) {
+    // Get popular users by follower count, excluding the current user and those they already follow
+    const suggestedUsers = await prisma.user.findMany({
+      where: {
+        id: { not: userId },
+        followers: {
+          none: { followerId: userId }
+        },
+        profile: { isNot: null }
+      },
+      include: {
+        profile: true,
+        _count: {
+          select: { followers: true }
+        },
+        followers: {
+          where: {
+            follower: {
+              following: {
+                some: { followerId: userId }
+              }
+            }
+          },
+          take: 1
+        }
+      },
+      orderBy: {
+        followers: {
+          _count: 'desc'
+        }
+      },
+      take: limit
+    });
+
+    return suggestedUsers.map(u => ({
+      id: u.id,
+      username: u.profile!.username,
+      displayName: u.profile!.name,
+      avatar: u.profile!.profilePic,
+      followers: u._count.followers,
+      mutualFollowers: u.followers.length // Simplified mutual indicator
+    }));
   }
 }
 

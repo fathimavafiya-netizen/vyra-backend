@@ -54,11 +54,11 @@ function section(title: string) {
   console.log(SEP);
 }
 
-// Resolve paths from cwd (this script is run from vyra/backend/)
+// Resolve paths from cwd (this script is run from sociall/backend/)
 // ts-node sets __dirname to '.' when using -P flag, so we use process.cwd()
 const CWD      = process.cwd();
-const BACKEND  = CWD;                               // = vyra/backend
-const MOBILE   = path.resolve(CWD, '..', 'mobile'); // = vyra/mobile
+const BACKEND  = CWD;                               // = sociall/backend
+const MOBILE   = path.resolve(CWD, '..', 'mobile'); // = sociall/mobile
 
 function backendPath(...parts: string[]) { return path.join(BACKEND, ...parts); }
 function mobilePath(...parts: string[])  { return path.join(MOBILE, ...parts);  }
@@ -351,7 +351,7 @@ async function checkStoryDraftLifecycle() {
     const draft = await prisma.storyDraft.create({
       data: {
         userId: testUserId,
-        mediaUrl: 'https://cdn.vyra.app/test/draft.mp4',
+        mediaUrl: 'https://cdn.sociall.app/test/draft.mp4',
         caption: 'Draft caption',
       },
     });
@@ -512,7 +512,7 @@ async function checkPrismaStoryFields() {
 
 async function run() {
   console.log('\n' + '═'.repeat(60));
-  console.log('  🚀 Vyra Home Module — E2E Verification Suite');
+  console.log('  🚀 Sociall Home Module — E2E Verification Suite');
   console.log('     Phase 1–7 · Implementation Plan v1.0');
   console.log('═'.repeat(60));
 

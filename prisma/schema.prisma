@@ -4,10 +4,19 @@ datasource db {
 }
 
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
 }
 
 // Models
+
+enum PostStatus {
+  DRAFT
+  SCHEDULED
+  PUBLISHED
+  ARCHIVED
+}
+
 model User {
   id           String      @id @default(uuid())
   email        String?     @unique
@@ -53,6 +62,7 @@ model User {
   // Relations
   profile      Profile?
   settings     UserSettings?
+  notificationPrefs NotificationPreferences?
   sessions     Session[]
   devices      Device[]
   tokenAudits  RefreshTokenAudit[]
@@ -109,6 +119,7 @@ model User {
   lastSeen         DateTime?
   fcmToken         String?
   resolvedReports  Report[]        @relation("ReportResolver")
+  mediaUploadJobs  MediaUploadJob[]
 }
 
 model Profile {
@@ -119,7 +130,7 @@ model Profile {
   username   String   @unique
   profilePic String   @default("https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&h=150&q=80")
   coverPic   String   @default("https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=800&h=300&q=80")
-  bio        String   @default("Hey there! I am using Vyra.")
+  bio        String   @default("Hey there! I am using Sociall.")
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 }
@@ -129,7 +140,7 @@ model UserSettings {
   userId            String   @unique
   user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   isPrivate         Boolean  @default(false)
-  darkMode          Boolean  @default(true)
+  darkMode          Boolean  @default(false)
   likesEnabled      Boolean  @default(true)
   commentsEnabled   Boolean  @default(true)
   followersEnabled  Boolean  @default(true)
@@ -137,6 +148,31 @@ model UserSettings {
   mentionsEnabled   Boolean  @default(true)
   aiEnabled         Boolean  @default(true)
   seenReceiptsEnabled Boolean  @default(true)
+  updatedAt         DateTime @updatedAt
+}
+
+model NotificationPreferences {
+  userId      String   @id
+  likes       Boolean  @default(true)
+  comments    Boolean  @default(true)
+  replies     Boolean  @default(true)
+  followers   Boolean  @default(true)
+  mentions    Boolean  @default(true)
+  messages    Boolean  @default(true)
+  stories     Boolean  @default(true)
+  liveStreams Boolean  @default(true)
+  marketing   Boolean  @default(false)
+  updatedAt   DateTime @updatedAt
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model FeatureFlag {
+  key               String   @id
+  isEnabled         Boolean  @default(false)
+  description       String?
+  rolloutPercentage Int?
+  environment       String?
+  platform          String?
   updatedAt         DateTime @updatedAt
 }
 
@@ -227,6 +263,11 @@ model Post {
   user           User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   type           String      @default("POST") // 'POST' | 'REEL' | 'VIDEO' | 'STORY' | 'LIVE'
   caption        String      @default("")
+  status         PostStatus @default(PUBLISHED)
+  version        Int        @default(1)
+  lastEditedBy   String?
+  scheduledAt    DateTime?
+  publishedAt    DateTime?
   audioTitle     String?
   isHidden       Boolean     @default(false)
   
@@ -259,6 +300,7 @@ model Post {
   @@index([userId])
   @@index([originalPostId])
   @@index([type, createdAt])
+  @@index([userId, status, deletedAt, createdAt])
 }
 
 model Media {
@@ -757,4 +799,23 @@ model StoryReport {
   reporter   User     @relation(fields: [reporterId], references: [id], onDelete: Cascade)
   reason     String   // "SPAM" | "HARASSMENT" | "VIOLENCE" | "NUDITY" | "COPYRIGHT" | "OTHER"
   createdAt  DateTime @default(now())
+}
+
+model MediaUploadJob {
+  jobId              String   @id // The tracking ID returned to client
+  userId             String
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status             String   @default("QUEUED") // QUEUED, PROCESSING, OPTIMIZING, UPLOADING, COMPLETED, FAILED
+  mediaType          String   // 'IMAGE' | 'VIDEO'
+  originalFilename   String
+  size               Int
+  cloudinaryPublicId String?
+  secureUrl          String?
+  errorMessage       String?
+  createdAt          DateTime @default(now())
+  completedAt        DateTime?
+  updatedAt          DateTime @updatedAt
+
+  @@index([userId])
+  @@index([status])
 }

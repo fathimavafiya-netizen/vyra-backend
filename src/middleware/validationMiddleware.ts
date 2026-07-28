@@ -12,6 +12,7 @@ export const validateRequest = (schema: AnyZodObject) => {
       return next();
     } catch (error) {
       if (error instanceof ZodError) {
+        console.error('Validation Error Details:', JSON.stringify(error.errors, null, 2));
         return res.status(400).json({
           success: false,
           message: 'Validation failed',

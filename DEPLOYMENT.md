@@ -1,4 +1,4 @@
-﻿# Vyra — Deployment Guide
+﻿# Sociall — Deployment Guide
 
 > Last updated: 2026-07-13
 
@@ -8,9 +8,9 @@
 
 | Part | Tech Stack | Repo / Location |
 |------|-----------|-----------------|
-| Backend | Node.js + Express + Prisma + PostgreSQL | `github.com/fathimavafiya-netizen/vyra-backend` |
-| Mobile App | React Native + Expo | `d:\Desktop\vyra\mobile` |
-| Deployment | Render (backend) + EAS (mobile) | `https://vyra-backend.onrender.com` |
+| Backend | Node.js + Express + Prisma + PostgreSQL | `github.com/fathimavafiya-netizen/sociall-backend` |
+| Mobile App | React Native + Expo | `d:\Desktop\sociall\mobile` |
+| Deployment | Render (backend) + EAS (mobile) | `https://sociall-backend.onrender.com` |
 
 ---
 
@@ -24,7 +24,7 @@
 ### Setup
 
 ```bash
-cd d:\Desktop\vyra\backend
+cd d:\Desktop\sociall\backend
 
 # Install dependencies
 npm install
@@ -45,7 +45,7 @@ npm run dev
 ### Admin Credentials (Local)
 
 ```
-Email:    admin@vyra.com
+Email:    admin@sociall.com
 Password: admin123
 ```
 
@@ -58,8 +58,8 @@ NODE_ENV=development
 PORT=5000
 DATABASE_URL="file:./dev.db"
 
-JWT_SECRET="vyra_super_secret_access_token_key_2026"
-JWT_REFRESH_SECRET="vyra_super_secret_refresh_token_key_2026"
+JWT_SECRET="sociall_super_secret_access_token_key_2026"
+JWT_REFRESH_SECRET="sociall_super_secret_refresh_token_key_2026"
 
 # Email OTP (Resend)
 RESEND_API_KEY="re_6uiGnUrL_..."
@@ -74,7 +74,7 @@ TWILIO_AUTH_TOKEN="3ada2b0f..."
 TWILIO_PHONE_NUMBER="+17622912430"
 
 # Media storage (Cloudinary — optional, falls back to local uploads/)
-CLOUDINARY_NAME="vyra_cloudinary"
+CLOUDINARY_NAME="sociall_cloudinary"
 CLOUDINARY_KEY="..."
 CLOUDINARY_SECRET="..."
 
@@ -90,8 +90,8 @@ CLOUDINARY_SECRET="..."
 
 | Field | Value |
 |-------|-------|
-| URL | `https://vyra-backend.onrender.com` |
-| GitHub Repo | `github.com/fathimavafiya-netizen/vyra-backend` |
+| URL | `https://sociall-backend.onrender.com` |
+| GitHub Repo | `github.com/fathimavafiya-netizen/sociall-backend` |
 | Database | PostgreSQL (set via Render env vars) |
 | Build Command | `npm run build` (runs `npx prisma generate && tsc`) |
 | Start Command | `npm start` (runs `node dist/server.js`) |
@@ -152,7 +152,7 @@ GOOGLE_CLIENT_ID=...
 ### Setup
 
 ```bash
-cd d:\Desktop\vyra\mobile
+cd d:\Desktop\sociall\mobile
 npm install
 npx expo start
 ```
@@ -162,7 +162,7 @@ npx expo start
 ```ts
 const LOCAL_URL  = 'http://172.20.10.2:5000/api/v1';             // PC on same WiFi (current IP)
 const TUNNEL_URL = 'https://<tunnel-url>/api/v1';                // Tunnel for LTE/5G
-const PROD_URL   = 'https://vyra-backend.onrender.com/api/v1';  // Render production
+const PROD_URL   = 'https://sociall-backend.onrender.com/api/v1';  // Render production
 
 // Change this ONE line to switch:
 return LOCAL_URL;   // currently active
@@ -175,7 +175,7 @@ return LOCAL_URL;   // currently active
 | Production / mentor demo | `PROD_URL` |
 
 > Windows Firewall rule — must be added once (Admin PowerShell):
-> netsh advfirewall firewall add rule name="Vyra Backend 5000" protocol=TCP dir=in localport=5000 action=allow
+> netsh advfirewall firewall add rule name="Sociall Backend 5000" protocol=TCP dir=in localport=5000 action=allow
 
 ### Pending Mobile Changes (not yet committed)
 
@@ -228,7 +228,7 @@ The admin panel lives inside the mobile app and is visible only to ADMIN / MODER
 
 **Credentials:**
 ```
-Email:    admin@vyra.com
+Email:    admin@sociall.com
 Password: admin123
 ```
 

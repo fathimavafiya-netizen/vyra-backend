@@ -1,7 +1,7 @@
 module.exports = {
   apps: [
     {
-      name: 'vyra-backend',
+      name: 'sociall-backend',
       script: 'dist/server.js',
       instances: 'max', // Utilizes all available CPU cores
       exec_mode: 'cluster',

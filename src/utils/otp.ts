@@ -208,10 +208,10 @@ export const sendOtpViaEmail = async (email: string, code: string): Promise<{ su
     const { data, error } = await resend.emails.send({
       from: process.env.EMAIL_FROM || 'onboarding@resend.dev',
       to: email,
-      subject: `${code} is your Vyra verification code`,
+      subject: `${code} is your Sociall verification code`,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 32px; background: #090A0F; color: #fff; border-radius: 16px;">
-          <h1 style="color: #00F2FE; font-size: 32px; margin-bottom: 4px;">Vyra</h1>
+          <h1 style="color: #00F2FE; font-size: 32px; margin-bottom: 4px;">Sociall</h1>
           <p style="color: #8E9A9E; margin-top: 0;">Create. Connect. Inspire.</p>
           <hr style="border-color: rgba(255,255,255,0.08); margin: 24px 0;" />
           <p style="font-size: 16px; color: #C5C6C7;">Your one-time verification code is:</p>
@@ -253,7 +253,7 @@ export const sendOtpViaSms = async (mobile: string, code: string): Promise<{ suc
 
     try {
       const message = await twilioClient.messages.create({
-        body: `Your Vyra verification code is: ${code}. Valid for 5 minutes.`,
+        body: `Your Sociall verification code is: ${code}. Valid for 5 minutes.`,
         from: twilioPhone,
         to: mobile,
       });
@@ -281,7 +281,7 @@ export const sendOtpViaSms = async (mobile: string, code: string): Promise<{ suc
         },
         body: JSON.stringify({
           route: 'q',
-          message: `Your Vyra verification code is: ${code}. Valid for 5 minutes. Do not share this code with anyone.`,
+          message: `Your Sociall verification code is: ${code}. Valid for 5 minutes. Do not share this code with anyone.`,
           language: 'english',
           flash: 0,
           numbers: cleanMobile,

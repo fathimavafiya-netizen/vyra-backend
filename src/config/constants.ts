@@ -1,5 +1,5 @@
 /**
- * Vyra — shared status constants
+ * Sociall — shared status constants
  * Using `as const` objects instead of Prisma enums for SQLite compatibility.
  * Migrate to proper Prisma enums when moving to PostgreSQL in Phase 5.
  */

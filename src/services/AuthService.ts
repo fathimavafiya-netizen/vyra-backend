@@ -3,7 +3,9 @@ import { randomUUID } from 'crypto';
 import userRepository from '../repositories/UserRepository';
 import sessionRepository from '../repositories/SessionRepository';
 import { generateAccessToken, generateRefreshToken, verifyRefreshToken, hashToken } from '../utils/jwt';
-import logger from '../utils/logger';
+import { createChildLogger } from '../logger/childLogger';
+import { LogAction } from '../logger/actions';
+const logger = createChildLogger('auth');
 import prisma from '../config/db';
 import { env } from '../config/env';
 import { logAuditEvent } from '../utils/audit';
@@ -18,6 +20,7 @@ export class AuthService {
       name: string;
       email?: string;
       mobile?: string;
+      password?: string;
       deviceId: string;
       deviceName: string;
       platform: 'IOS' | 'ANDROID' | 'WEB';
@@ -43,8 +46,8 @@ export class AuthService {
       if (existingUser) throw new Error('Already registered. Please log in instead.');
     }
 
-    // 2. Generate secure random placeholder password (passwordless flow)
-    const rawPassword = Math.random().toString(36).substring(2, 12);
+    // 2. Hash password or generate secure random placeholder password (passwordless flow)
+    const rawPassword = data.password || Math.random().toString(36).substring(2, 12);
     const passwordHash = await bcrypt.hash(rawPassword, 10);
 
     // 3. Unique username retry loop
@@ -126,6 +129,7 @@ export class AuthService {
     data: {
       email?: string;
       mobile?: string;
+      password?: string;
       deviceId: string;
       deviceName: string;
       platform: 'IOS' | 'ANDROID' | 'WEB';
@@ -148,6 +152,7 @@ export class AuthService {
     }
 
     if (!user || !user.isActive || user.deletedAt !== null) {
+      logger.warn({ action: LogAction.AUTH_LOGIN_FAILED, ip: data.ipAddress, userAgent: data.userAgent, message: 'User account not found or deactivated' });
       await logAuditEvent({
         action: 'LOGIN_FAILURE',
         severity: 'WARNING',
@@ -161,6 +166,7 @@ export class AuthService {
     }
 
     if (user.isBanned) {
+      logger.warn({ action: LogAction.AUTH_LOGIN_FAILED, userId: user.id, ip: data.ipAddress, userAgent: data.userAgent, message: 'Banned user login blocked' });
       await logAuditEvent({
         userId: user.id,
         action: 'LOGIN_FAILURE',
@@ -172,6 +178,24 @@ export class AuthService {
       });
       await incrementMetric('login_failure');
       throw new Error(`Account is banned: ${user.bannedReason || 'Terms violation'}`);
+    }
+
+    if (data.password && user.password) {
+      const isValid = await bcrypt.compare(data.password, user.password);
+      if (!isValid) {
+        logger.warn({ action: LogAction.AUTH_LOGIN_FAILED, userId: user.id, ip: data.ipAddress, userAgent: data.userAgent, message: 'Invalid credentials' });
+        await logAuditEvent({
+          userId: user.id,
+          action: 'LOGIN_FAILURE',
+          severity: 'WARNING',
+          status: 'INVALID_CREDENTIALS',
+          ipAddress: data.ipAddress,
+          deviceId: data.deviceId,
+          userAgent: data.userAgent,
+        });
+        await incrementMetric('login_failure');
+        throw new Error('Invalid email or password');
+      }
     }
 
     // 1. Enforce Session Limits
@@ -186,6 +210,7 @@ export class AuthService {
         where: { id: oldest.id },
         data: { isValid: false },
       });
+      logger.warn({ action: 'SESSION_REVOKED', userId: user.id, ip: data.ipAddress, userAgent: data.userAgent, message: 'Evicted max sessions limit reached' });
       await logAuditEvent({
         userId: user.id,
         action: 'SESSION_REVOKED',
@@ -233,7 +258,7 @@ export class AuthService {
       userId: user.id,
       action: 'LOGIN_SUCCESS',
       severity: 'INFO',
-      status: 'OTP_LOGIN_VERIFIED',
+      status: data.password ? 'CREDENTIALS_VERIFIED' : 'OTP_LOGIN_VERIFIED',
       ipAddress: data.ipAddress,
       deviceId: data.deviceId,
       userAgent: data.userAgent,
@@ -285,6 +310,7 @@ export class AuthService {
     });
 
     if (!session) {
+      logger.warn({ action: 'REFRESH_FAILED', ip: data.ipAddress, userAgent: data.userAgent, message: 'Unrecognized refresh token submission' });
       await logAuditEvent({
         action: 'REFRESH_ROTATED',
         severity: 'SECURITY',
@@ -305,6 +331,7 @@ export class AuthService {
         data: { isValid: false },
       });
 
+      logger.error({ action: 'REFRESH_REPLAY_ATTACK', userId: session.userId, ip: data.ipAddress, userAgent: data.userAgent, message: 'Replay attack detected' });
       await logAuditEvent({
         userId: session.userId,
         action: 'REFRESH_ROTATED',
