@@ -11,8 +11,8 @@ class UploadService {
    * Processes and compresses an image into WebP format from disk
    */
   async processImageFromPath(filePath: string, originalName: string): Promise<{ secureUrl: string, publicId: string }> {
-    const filename = `sociall-processed_${Date.now()}_${path.parse(originalName).name}.webp`;
-    const tempOutputPath = path.join(os.tmpdir(), filename);
+    const baseName = `sociall-processed_${Date.now()}_${path.parse(originalName).name}`;
+    const tempOutputPath = path.join(os.tmpdir(), `${baseName}.webp`);
     
     // Compress and convert image to WebP using sharp, saving to temp file
     await sharp(filePath)
@@ -21,7 +21,8 @@ class UploadService {
       .toFile(tempOutputPath);
 
     try {
-      const result = await storageProvider.uploadFileFromPath(filename, tempOutputPath, 'image/webp');
+      // Pass baseName without extension to Cloudinary
+      const result = await storageProvider.uploadFileFromPath(baseName, tempOutputPath, 'image/webp');
       return { secureUrl: result.secureUrl, publicId: result.publicId };
     } finally {
       // Clean up the processed temp file (the original filePath will be cleaned up by the queue worker)

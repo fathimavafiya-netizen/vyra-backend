@@ -6,6 +6,7 @@ if (ffmpegStatic) {
   ffmpeg.setFfmpegPath(ffmpegStatic);
 }
 import os from 'os';
+import fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 import { createChildLogger } from '../logger/childLogger';
 
@@ -90,11 +91,17 @@ export class VideoProcessor {
         }
       }
 
+      let textFilePath: string | undefined;
+
       // 5. Apply Text Overlay
       if (textOverlay && textOverlay.trim() !== '') {
-        // Safe string escaping for ffmpeg drawtext
-        const safeText = textOverlay.replace(/'/g, "\\'").replace(/:/g, '\\:');
-        videoFilters.push(`drawtext=text='${safeText}':fontcolor=white:fontsize=48:x=(w-text_w)/2:y=h-th-50:box=1:boxcolor=black@0.5:boxborderw=10`);
+        // Use a text file instead of inline text to avoid FFmpeg parsing errors with emojis and special characters
+        textFilePath = path.join(os.tmpdir(), `text-${uuidv4()}.txt`);
+        fs.writeFileSync(textFilePath, textOverlay);
+        
+        // Escape the path for FFmpeg filter_complex
+        const safeTextFilePath = textFilePath.replace(/\\/g, '/').replace(/:/g, '\\:');
+        videoFilters.push(`drawtext=textfile='${safeTextFilePath}':fontcolor=white:fontsize=48:x=(w-text_w)/2:y=h-th-50:box=1:boxcolor=black@0.5:boxborderw=10`);
       }
 
       // Add combined filters
@@ -105,7 +112,9 @@ export class VideoProcessor {
         command.audioFilters(audioFilters);
       }
 
-      // 6. Execute FFmpeg
+      // 6. Execute FFmpeg with a Timeout
+      let timeoutId: NodeJS.Timeout;
+
       command
         .outputOptions([
           '-movflags faststart', // optimize for web streaming
@@ -113,13 +122,22 @@ export class VideoProcessor {
         ])
         .on('start', (cmd) => {
           log.debug({ action: 'FFMPEG_START' as any, command: cmd });
+          timeoutId = setTimeout(() => {
+            log.error({ action: 'FFMPEG_TIMEOUT' as any, message: 'Processing timed out after 3 minutes' });
+            command.kill('SIGKILL');
+            reject(new Error('Video processing timed out'));
+          }, 3 * 60 * 1000); // 3 minutes timeout
         })
         .on('error', (err) => {
+          clearTimeout(timeoutId);
           log.error({ action: 'FFMPEG_ERROR' as any, error: err.message });
+          if (textFilePath && fs.existsSync(textFilePath)) fs.unlinkSync(textFilePath);
           reject(new Error(`Video processing failed: ${err.message}`));
         })
         .on('end', () => {
+          clearTimeout(timeoutId);
           log.info({ action: 'FFMPEG_COMPLETE' as any, outputPath });
+          if (textFilePath && fs.existsSync(textFilePath)) fs.unlinkSync(textFilePath);
           resolve(outputPath);
         })
         .save(outputPath);
