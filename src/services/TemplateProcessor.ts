@@ -71,7 +71,7 @@ class TemplateProcessor {
         // Write text to a temporary file to avoid ffmpeg command-line parsing issues with emojis/special chars
         const textFilePath = path.join(os.tmpdir(), `drawtext-${uuidv4()}.txt`);
         fs.writeFileSync(textFilePath, text, 'utf8');
-        const escapedTextFilePath = textFilePath.replace(/\\/g, '/');
+        const escapedTextFilePath = textFilePath.replace(/\\/g, '/').replace(/:/g, '\\\\:');
 
         // Create the filter graph
         // 1. Scale background to 720x1280 (vertical video)
@@ -79,7 +79,7 @@ class TemplateProcessor {
         const filterGraph = [
           `[0:v]scale=720:1280:force_original_aspect_ratio=increase,crop=720:1280[bg]`,
           `[bg]drawtext=textfile='${escapedTextFilePath}':fontcolor=white:fontsize=48:x=(w-text_w)/2:y=(h-text_h)/2:box=1:boxcolor=black@0.5:boxborderw=10[v]`
-        ].join(',');
+        ].join(';');
 
         command
           .complexFilter(filterGraph, ['v'])
