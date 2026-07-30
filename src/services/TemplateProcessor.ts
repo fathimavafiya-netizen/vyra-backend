@@ -68,17 +68,17 @@ class TemplateProcessor {
         // Input 2: The music track
         command.input(musicFile);
         
-        // Escape text for ffmpeg drawtext
-        // Replacing single quotes and colons which cause issues
-        const safeText = text.replace(/'/g, "\u2019").replace(/:/g, "\\:");
+        // Write text to a temporary file to avoid ffmpeg command-line parsing issues with emojis/special chars
+        const textFilePath = path.join(os.tmpdir(), `drawtext-${uuidv4()}.txt`);
+        fs.writeFileSync(textFilePath, text, 'utf8');
+        const escapedTextFilePath = textFilePath.replace(/\\/g, '/');
 
         // Create the filter graph
         // 1. Scale background to 720x1280 (vertical video)
         // 2. Add text overlay at the center
-        // Note: For a real app, a custom font file is needed. We use the default font.
         const filterGraph = [
           `[0:v]scale=720:1280:force_original_aspect_ratio=increase,crop=720:1280[bg]`,
-          `[bg]drawtext=text='${safeText}':fontcolor=white:fontsize=48:x=(w-text_w)/2:y=(h-text_h)/2:box=1:boxcolor=black@0.5:boxborderw=10[v]`
+          `[bg]drawtext=textfile='${escapedTextFilePath}':fontcolor=white:fontsize=48:x=(w-text_w)/2:y=(h-text_h)/2:box=1:boxcolor=black@0.5:boxborderw=10[v]`
         ].join(',');
 
         command
@@ -95,10 +95,12 @@ class TemplateProcessor {
           .output(outputPath)
           .on('end', () => {
             log.info({ action: 'TEMPLATE_COMPILE_SUCCESS' as any, outputPath });
+            try { fs.unlinkSync(textFilePath); } catch(e) {}
             resolve(outputPath);
           })
           .on('error', (err) => {
             log.error({ action: 'TEMPLATE_COMPILE_ERROR' as any, error: err.message });
+            try { fs.unlinkSync(textFilePath); } catch(e) {}
             reject(new Error('Failed to compile template: ' + err.message));
           });
           
