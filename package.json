@@ -4,13 +4,13 @@
   "description": "Backend API and Socket.IO server for Sociall Social Media Application",
   "main": "dist/server.js",
   "scripts": {
-    "build": "node_modules/.bin/prisma generate && tsc",
+    "build": "npx prisma generate && tsc",
     "start": "node dist/server.js",
     "start:prod": "pm2 start ecosystem.config.js --env production",
     "stop:prod": "pm2 stop ecosystem.config.js",
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
     "seed": "ts-node prisma/seed.ts",
-    "test": "jest --forceExit"
+    "test": "jest --runInBand --forceExit"
   },
   "prisma": {
     "seed": "ts-node prisma/seed.ts"

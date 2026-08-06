@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
+import bcrypt from 'bcryptjs';
 import authService from '../services/AuthService';
 import userRepository from '../repositories/UserRepository';
 import otpUtil from '../utils/otp';
@@ -510,22 +511,24 @@ export class AuthController {
   async deleteAccount(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
       const userId = req.user?.id;
-      const { otp } = req.body;
+      const { password } = req.body;
 
       if (!userId) {
         throw new Error('Authentication required');
       }
 
-      // OTP Verification: use user's verified contact
-      const dbUser = await prisma.user.findUnique({ where: { id: userId } });
-      const contact = dbUser?.email || dbUser?.mobile;
-      if (!contact) {
-        throw new Error('No verified contact method found on user profile');
+      if (!password) {
+        return res.status(400).json({ success: false, code: 'PASSWORD_REQUIRED', message: 'Password is required to delete account.' });
       }
 
-      const { valid } = await otpUtil.verifyOtpFromDB(contact, otp, dbUser.email ? 'EMAIL' : 'MOBILE');
-      if (!valid) {
-        return res.status(400).json({ success: false, code: 'OTP_INVALID', message: 'Invalid or expired OTP.' });
+      const dbUser = await prisma.user.findUnique({ where: { id: userId } });
+      if (!dbUser || !dbUser.password) {
+        throw new Error('User not found or password not set.');
+      }
+
+      const isValid = await bcrypt.compare(password, dbUser.password);
+      if (!isValid) {
+        return res.status(400).json({ success: false, code: 'INVALID_PASSWORD', message: 'Incorrect password.' });
       }
 
       // Soft-Delete: set flags
@@ -608,10 +611,12 @@ export class AuthController {
         consentGiven: !!consentGiven,
       });
 
+      setAuthCookies(res, result.accessToken, result.refreshToken, !!rememberDevice);
+
       return res.status(200).json({
         success: true,
         message: result.message,
-        user: result.user,
+        data: result,
       });
     } catch (e: any) {
       return res.status(400).json({ success: false, code: 'REGISTER_FAILED', message: e.message });

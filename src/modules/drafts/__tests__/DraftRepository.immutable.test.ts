@@ -33,7 +33,7 @@ describe('DraftRepository - Immutable Fields', () => {
     
     expect((prisma.post as any).update).toHaveBeenCalledWith({
       where: { id: 'id' },
-      data: { caption: 'New' },
+      data: { caption: 'New', version: { increment: 1 } },
     });
   });
 });

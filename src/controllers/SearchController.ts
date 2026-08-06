@@ -14,6 +14,7 @@ export class SearchController {
       const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 20;
 
       const results = await searchService.search(userId, { query, type, page, limit });
+      console.log(`[SearchController] Search for '${query}':`, JSON.stringify(results));
       return res.status(200).json({ success: true, ...results });
     } catch (e: any) {
       return res.status(400).json({ success: false, message: e.message });

@@ -4,6 +4,11 @@ import bcrypt from 'bcryptjs';
 const prisma = new PrismaClient();
 
 async function main() {
+  if (process.env.NODE_ENV === 'production') {
+    console.warn('⚠️ Seeding is disabled in production environment!');
+    process.exit(0);
+  }
+
   console.log('🌱 Starting database seeding...');
 
   // Clean all existing tables to prevent foreign key errors during re-seeds

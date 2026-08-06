@@ -118,7 +118,7 @@ export class MediaProcessingQueue {
         for (const res of resolutions) {
           let variantBuffer = buffer;
           let variantMime = mimeType;
-          let key = `${baseKey}${res.suffix}${isVideo ? ext : '.webp'}`;
+          let key = `${baseKey}${res.suffix}${isVideo ? ext : '.jpeg'}`;
 
           if (!isVideo) {
             // Compress and resize images using sharp to WebP format
@@ -126,15 +126,20 @@ export class MediaProcessingQueue {
             if (res.size) {
               sh = sh.resize({ width: res.size, height: res.size, fit: 'inside', withoutEnlargement: true });
             }
-            variantBuffer = await sh.webp({ quality: 80 }).toBuffer();
-            variantMime = 'image/webp';
+            variantBuffer = await sh.jpeg({ quality: 80 }).toBuffer();
+            variantMime = 'image/jpeg';
           } else {
             // Video Compression Simulation: In production, we run ffmpeg wrapper execution
             // Local mock: upload the video chunk as variant
             variantMime = 'video/mp4';
           }
 
-          const fileUrl = await storageProvider.uploadFile(key, variantBuffer, variantMime);
+          let fileUrl = '';
+          if (res.name === 'original') {
+             fileUrl = mediaUrl; // Reuse the already uploaded cloud URL to guarantee the original isn't lost or corrupted!
+          } else {
+             fileUrl = await storageProvider.uploadFile(key, variantBuffer, variantMime);
+          }
           
           await prisma.storyMediaVariant.create({
             data: {

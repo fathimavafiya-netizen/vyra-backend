@@ -15,7 +15,7 @@ describe('DraftRepository - Pagination', () => {
     await repo.listDrafts('u1', undefined, 20);
 
     expect((prisma.post as any).findMany).toHaveBeenCalledWith({
-      where: { userId: 'u1', deletedAt: null },
+      where: { userId: 'u1', deletedAt: null, status: { in: ['DRAFT', 'SCHEDULED'] } },
       orderBy: { createdAt: 'desc' },
       take: 20,
       skip: 0,
@@ -28,7 +28,7 @@ describe('DraftRepository - Pagination', () => {
     await repo.listDrafts('u1', 'c1', 10);
 
     expect((prisma.post as any).findMany).toHaveBeenCalledWith({
-      where: { userId: 'u1', deletedAt: null },
+      where: { userId: 'u1', deletedAt: null, status: { in: ['DRAFT', 'SCHEDULED'] } },
       orderBy: { createdAt: 'desc' },
       take: 10,
       skip: 1,

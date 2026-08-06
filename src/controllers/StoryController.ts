@@ -481,7 +481,7 @@ export class StoryController {
         cursor as string | undefined,
         limit ? Number(limit) : undefined
       );
-      const formattedReels = reels.map(r => formatPostResponse(r));
+      const formattedReels = await Promise.all(reels.map(r => formatPostResponse(r, userId)));
       return res.json({ success: true, reels: formattedReels });
     } catch (e: any) {
       next(e);

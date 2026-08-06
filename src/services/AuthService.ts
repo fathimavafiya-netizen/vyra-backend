@@ -103,9 +103,46 @@ export class AuthService {
       return newUser;
     });
 
+    // 5. Generate Session and Tokens
+    const familyId = randomUUID();
+    const session = await prisma.session.create({
+      data: {
+        userId: user.id,
+        refreshTokenHash: 'PENDING_HASH',
+        deviceId: data.deviceId,
+        deviceName: data.deviceName,
+        platform: data.platform,
+        appVersion: data.appVersion,
+        ipAddress: data.ipAddress,
+        userAgent: data.userAgent,
+        familyId,
+        expiresAt: new Date(Date.now() + (data.rememberDevice ? env.TRUSTED_DEVICE_DAYS : 7) * 24 * 60 * 60 * 1000),
+      },
+    });
+
+    const accessToken = generateAccessToken(user.id, user.role, session.id, 1, {});
+    const refreshToken = generateRefreshToken(user.id, session.id);
+    const refreshTokenHash = hashToken(refreshToken);
+
+    await prisma.session.update({
+      where: { id: session.id },
+      data: { refreshTokenHash },
+    });
+
+    await logAuditEvent({
+      userId: user.id,
+      action: 'LOGIN_SUCCESS',
+      severity: 'INFO',
+      status: 'AUTO_LOGIN_AFTER_REGISTER',
+      ipAddress: data.ipAddress,
+      deviceId: data.deviceId,
+      userAgent: data.userAgent,
+    });
+    await incrementMetric('login_success');
+
     return {
       success: true,
-      message: "Registration successful. Please log in.",
+      message: "Registration successful.",
       user: {
         id: user.id,
         name: user.profile!.name,
@@ -118,7 +155,10 @@ export class AuthService {
         role: user.role,
         isVerified: user.isVerified,
         mfaEnabled: user.mfaEnabled,
-      }
+      },
+      accessToken,
+      refreshToken,
+      sessionId: session.id,
     };
   }
 
@@ -145,10 +185,19 @@ export class AuthService {
     }
 
     let user = null;
-    if (data.email) {
-      user = await userRepository.findByEmail(data.email.toLowerCase().trim());
-    } else if (data.mobile) {
-      user = await userRepository.findByMobile(data.mobile.trim());
+    const identifier = (data.email || data.mobile)?.toLowerCase().trim();
+    if (identifier) {
+      user = await prisma.user.findFirst({
+        where: {
+          OR: [
+            { email: identifier },
+            { profile: { username: identifier } },
+            { mobile: identifier },
+            { mobile: (data.mobile || data.email)?.trim() }
+          ]
+        },
+        include: { profile: true }
+      });
     }
 
     if (!user || !user.isActive || user.deletedAt !== null) {

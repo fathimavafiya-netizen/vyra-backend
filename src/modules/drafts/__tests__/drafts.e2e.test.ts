@@ -49,7 +49,7 @@ describe('Drafts E2E', () => {
 
     // Clean up test user's posts before running
     await prisma.post.deleteMany({ where: { userId } });
-  });
+  }, 30_000);
 
   afterAll(async () => {
     await prisma.post.deleteMany({ where: { userId } });

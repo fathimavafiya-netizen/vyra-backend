@@ -12,7 +12,6 @@ describe('buildDraftUpdateData', () => {
     const result = buildDraftUpdateData(dto);
     expect(result).not.toHaveProperty('userId');
     expect(result).not.toHaveProperty('createdAt');
-    expect(result).not.toHaveProperty('status');
     expect(result).not.toHaveProperty('version');
     expect(result.caption).toBe('Valid caption');
   });

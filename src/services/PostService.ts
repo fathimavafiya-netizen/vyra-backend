@@ -33,10 +33,8 @@ export class PostService {
       if (dur !== undefined && dur > 0) {
         if (dur <= 30) {
           pTypeStr = 'REEL';
-        } else if (dur > 60) {
-          pTypeStr = 'VIDEO';
         } else {
-          throw new Error('Video duration must be 30 seconds or less for Short Videos, and greater than 60 seconds for Long Videos.');
+          pTypeStr = 'VIDEO';
         }
       }
     }
@@ -166,8 +164,15 @@ export class PostService {
     const limit = options.limit ?? 10;
     const fetchLimit = limit + 1; // Fetch one extra to determine hasMore
     
-    let posts: any[] = [];
     const sort = options.sort ? options.sort.toLowerCase() : 'newest';
+    const cacheKey = `feed:${userId}:${options.type || 'all'}:${options.search || 'none'}:${sort}:${limit}:${options.cursor || 'start'}`;
+    
+    const cached = await cache.get(cacheKey);
+    if (cached) {
+      return cached as { posts: any[]; nextCursor: string | null; hasMore: boolean };
+    }
+
+    let posts: any[] = [];
 
     if (sort === 'following') {
       posts = await postRepository.findFeed(userId, { ...options, limit: fetchLimit });
@@ -182,11 +187,15 @@ export class PostService {
 
     const nextCursor = hasMore ? posts[posts.length - 1].id : null;
 
-    return {
+    const result = {
       posts,
       nextCursor,
       hasMore
     };
+
+    await cache.set(cacheKey, result, 60); // Cache for 60 seconds
+
+    return result;
   }
 
   async getUserPosts(userId: string, limit = 50) {

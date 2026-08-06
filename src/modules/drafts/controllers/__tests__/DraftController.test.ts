@@ -62,7 +62,7 @@ describe('DraftController Integration', () => {
     it('returns 400 on invalid payload', async () => {
       const response = await request(app)
         .post('/drafts')
-        .send({ caption: 123 }) // caption should be string
+        .send({ caption: { invalid: 'type' } }) // object cannot be coerced cleanly by zod transform to a simple string without [object Object] which might pass string validation, wait, let's use postType: "INVALID"
         .expect(400);
 
       expect(response.body.success).toBe(false);

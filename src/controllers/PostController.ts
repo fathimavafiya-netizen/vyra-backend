@@ -153,9 +153,9 @@ export class PostController {
         type,
         search,
         sort,
-      });
+      }) as any;
       
-      const formattedPosts = await Promise.all(posts.map(p => formatPostResponse(p, userId)));
+      const formattedPosts = await Promise.all(posts.map((p: any) => formatPostResponse(p, userId)));
 
       return res.status(200).json({ success: true, posts: formattedPosts, nextCursor, hasMore });
     } catch (e: any) {
@@ -518,13 +518,14 @@ export class PostController {
         take: limit,
       });
 
-      const trendingPosts = posts
-        .map((p: any) => {
-          const score = p.views.length + p.likes.length * 2 + p.comments.length * 5;
-          return { post: formatPostResponse(p), score };
-        })
-        .sort((a: any, b: any) => b.score - a.score)
-        .map((x: any) => x.post);
+      const scores = posts.map((p: any) => ({
+        p,
+        score: p.views.length + p.likes.length * 2 + p.comments.length * 5
+      })).sort((a: any, b: any) => b.score - a.score);
+
+      const trendingPosts = await Promise.all(
+        scores.map((x: any) => formatPostResponse(x.p))
+      );
 
       return res.status(200).json({ success: true, posts: trendingPosts });
     } catch (e: any) {

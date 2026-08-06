@@ -50,7 +50,7 @@ export class SessionService {
 
     const session = await sessionRepository.create({
       userId,
-      refreshTokenHash: 'PENDING_HASH',
+      refreshTokenHash: `PENDING_${randomUUID()}`,
       expiresAt,
       ipAddress: device.ipAddress,
       userAgent: device.userAgent,
@@ -128,7 +128,7 @@ export class SessionService {
     const newExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
     const newSession = await sessionRepository.create({
       userId: user.id,
-      refreshTokenHash: 'PENDING_HASH',
+      refreshTokenHash: `PENDING_${randomUUID()}`,
       expiresAt: newExpiresAt,
       ipAddress,
       userAgent,

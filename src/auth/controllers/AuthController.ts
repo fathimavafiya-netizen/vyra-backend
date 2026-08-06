@@ -619,11 +619,26 @@ export class AuthController {
         });
       }
 
-      // Auto-login removed. Require explicit login step.
+      // Auto-login after registration
+      const result = await authenticationFacade.loginOrRegister({
+        email: cleanEmail || undefined,
+        mobile: cleanEmail ? undefined : (cleanMobile || undefined),
+        deviceId,
+        deviceName,
+        platform,
+        appVersion,
+        ipAddress: req.ip || 'unknown',
+        userAgent: req.get('user-agent') || 'unknown',
+        rememberDevice: !!rememberDevice,
+        pushToken,
+      });
+
+      setAuthCookies(res, result.accessToken, result.refreshToken, !!rememberDevice);
+
       logger.info({ action: LogAction.AUTH_REGISTER, userId: user.id, message: 'User registered successfully' });
       return res.status(200).json({
         success: true,
-        message: 'Registration successful. Please log in.',
+        message: 'Registration successful.',
         data: {
           user: {
             id: user.id,
@@ -635,7 +650,9 @@ export class AuthController {
             profilePic: user.profile?.profilePic,
             role: user.role,
             isVerified: user.isVerified,
-          }
+          },
+          accessToken: result.accessToken,
+          refreshToken: result.refreshToken,
         }
       });
     } catch (e: any) {

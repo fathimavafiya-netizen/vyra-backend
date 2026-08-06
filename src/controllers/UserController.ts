@@ -234,7 +234,7 @@ export class UserController {
       
       const match = await bcrypt.compare(password, user.password);
       if (!match) {
-        return res.status(401).json({ success: false, message: 'Incorrect password confirmation' });
+        return res.status(403).json({ success: false, message: 'Incorrect password confirmation' });
       }
 
       await userService.deleteAccount(userId);

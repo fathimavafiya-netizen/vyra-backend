@@ -67,15 +67,25 @@ export class AuthenticationFacade {
       user.deletedAt = null;
     }
 
-    // 2. Risk Detection Check
-    const risk = await riskAnalysisService.evaluateRisk({
+    // 2. Risk Detection Check (Run in background)
+    riskAnalysisService.evaluateRisk({
       userId: user.id,
       ipAddress: data.ipAddress,
       deviceId: data.deviceId,
       userAgent: data.userAgent,
-    });
+    }).then(async (risk) => {
+      // 5. Trigger Security Alerts (Out of band background jobs)
+      if (risk.score >= 50) {
+        await queueManager.addJob('security_alert', {
+          email: user.email,
+          mobile: user.mobile,
+          alertType: 'NEW_DEVICE_LOGIN',
+          details: `Login with high risk score (${risk.score}) from device ${data.deviceName}`,
+        }, 'high');
+      }
+    }).catch(err => console.error('Risk analysis failed:', err));
 
-    // 3. Create Session (Evicts oldest session if > 5)
+    // 3. Create Session (Evicts oldest session if > 5) - Blocking
     const isAdmin = user.role === 'ADMIN' || user.role === 'MODERATOR';
     const sessionDetails = await sessionService.createSession(
       user.id,
@@ -92,27 +102,18 @@ export class AuthenticationFacade {
       isAdmin ? { isAdminSession: true } : {}
     );
 
-    // 4. Update Device Trusted profile
-    await deviceService.registerOrUpdateDevice({
+    // 4. Update Device Trusted profile (Run in background)
+    deviceService.registerOrUpdateDevice({
       userId: user.id,
       deviceId: data.deviceId,
       deviceName: data.deviceName,
       platform: data.platform,
       pushToken: data.pushToken,
       rememberDevice: !!data.rememberDevice,
-    });
+    }).catch(err => console.error('Device update failed:', err));
 
-    // 5. Trigger Security Alerts (Out of band background jobs)
-    if (risk.score >= 50) {
-      await queueManager.addJob('security_alert', {
-        email: user.email,
-        mobile: user.mobile,
-        alertType: 'NEW_DEVICE_LOGIN',
-        details: `Login with high risk score (${risk.score}) from device ${data.deviceName}`,
-      }, 'high');
-    }
-
-    await auditService.logEvent({
+    // Async Audits & Metrics
+    auditService.logEvent({
       userId: user.id,
       action: 'LOGIN_SUCCESS',
       severity: 'INFO',
@@ -120,9 +121,9 @@ export class AuthenticationFacade {
       ipAddress: data.ipAddress,
       deviceId: data.deviceId,
       userAgent: data.userAgent,
-    });
+    }).catch(err => console.error('Audit log failed:', err));
 
-    await metricsService.incrementMetric('login_success');
+    metricsService.incrementMetric('login_success');
 
     return {
       user: {

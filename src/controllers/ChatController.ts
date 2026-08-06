@@ -23,11 +23,14 @@ export class ChatController {
     try {
       const userId = req.user?.id;
       const { targetUserId } = req.body;
+      console.log(`[ChatController] getOrCreateDirectChat for userId=${userId}, targetUserId=${targetUserId}`);
       if (!userId) throw new Error('Unauthorized');
       if (!targetUserId) throw new Error('Target user ID is required');
       const chat = await chatService.getOrCreateDirectChat(userId, targetUserId);
+      console.log(`[ChatController] getOrCreateDirectChat SUCCESS`);
       return res.status(200).json({ success: true, chat });
     } catch (e: any) {
+      console.error(`[ChatController] getOrCreateDirectChat ERROR:`, e.message);
       return res.status(400).json({ success: false, message: e.message });
     }
   }
