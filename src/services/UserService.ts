@@ -226,11 +226,16 @@ export class UserService {
         referenceId: request.id
       });
 
+      await cache.invalidate(`user_profile:${followerId}`);
+      await cache.invalidate(`user_profile:${followingId}`);
+
       return { success: true, status: 'REQUESTED', message: 'Follow request sent.' };
     } else {
       // Public: Follow immediately
       await userRepository.followUser(followerId, followingId);
       await cache.invalidate(`feed:${followerId}:*`);
+      await cache.invalidate(`user_profile:${followerId}`);
+      await cache.invalidate(`user_profile:${followingId}`);
 
       // Create notification
       await notificationService.createNotification({
@@ -254,6 +259,8 @@ export class UserService {
 
     await userRepository.unfollowUser(followerId, followingId);
     await cache.invalidate(`feed:${followerId}:*`);
+    await cache.invalidate(`user_profile:${followerId}`);
+    await cache.invalidate(`user_profile:${followingId}`);
     return { success: true, message: 'Unfollowed user.' };
   }
 
@@ -315,6 +322,10 @@ export class UserService {
       })
     ]);
 
+    await cache.invalidate(`feed:${request.senderId}:*`);
+    await cache.invalidate(`user_profile:${request.senderId}`);
+    await cache.invalidate(`user_profile:${receiverId}`);
+
     // Create notification asynchronously outside transaction
     await notificationService.createNotification({
       userId: request.senderId,
@@ -343,6 +354,9 @@ export class UserService {
       data: { status: 'REJECTED' }
     });
 
+    await cache.invalidate(`user_profile:${request.senderId}`);
+    await cache.invalidate(`user_profile:${receiverId}`);
+
     return { success: true, message: 'Follow request rejected.' };
   }
 
@@ -364,6 +378,9 @@ export class UserService {
       where: { id: request.id },
       data: { status: 'CANCELLED' }
     });
+
+    await cache.invalidate(`user_profile:${senderId}`);
+    await cache.invalidate(`user_profile:${receiverId}`);
 
     return { success: true, message: 'Follow request cancelled.' };
   }

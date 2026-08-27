@@ -101,7 +101,10 @@ export class VideoProcessor {
         
         // Escape the path for FFmpeg filter_complex
         const safeTextFilePath = textFilePath.replace(/\\/g, '/').replace(/:/g, '\\:');
-        videoFilters.push(`drawtext=textfile='${safeTextFilePath}':fontcolor=white:fontsize=48:x=(w-text_w)/2:y=h-th-50:box=1:boxcolor=black@0.5:boxborderw=10`);
+        const fontPath = os.platform() === 'win32' 
+          ? 'C\\:/Windows/Fonts/arial.ttf' 
+          : '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf';
+        videoFilters.push(`drawtext=fontfile='${fontPath}':textfile='${safeTextFilePath}':fontcolor=white:fontsize=48:x=(w-text_w)/2:y=h-th-50:box=1:boxcolor=black@0.5:boxborderw=10`);
       }
 
       // Add combined filters
@@ -118,7 +121,9 @@ export class VideoProcessor {
       command
         .outputOptions([
           '-movflags faststart', // optimize for web streaming
-          '-pix_fmt yuv420p'     // ensure wide compatibility
+          '-pix_fmt yuv420p',    // ensure wide compatibility
+          '-preset ultrafast',   // drastically speed up processing
+          '-crf 28'              // slightly lower quality to save processing time
         ])
         .on('start', (cmd) => {
           log.debug({ action: 'FFMPEG_START' as any, command: cmd });

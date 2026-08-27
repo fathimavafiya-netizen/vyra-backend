@@ -3,14 +3,23 @@ import multer from 'multer';
 import os from 'os';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
+import { v2 as cloudinary } from 'cloudinary';
 import { authMiddleware } from '../middleware/authMiddleware';
 import { queueManager } from '../queue/queue';
 import prisma from '../config/db';
 import { createChildLogger } from '../logger/childLogger';
 import { LogAction } from '../logger/actions';
 
+// Cloudinary is already configured via StorageProvider — re-use the same env vars.
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_NAME,
+  api_key: process.env.CLOUDINARY_KEY,
+  api_secret: process.env.CLOUDINARY_SECRET,
+});
+
 const router = Router();
 const log = createChildLogger('upload_route');
+
 
 // Configure local disk storage
 const storage = multer.diskStorage({
@@ -165,6 +174,44 @@ router.get('/:jobId', authMiddleware, async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * GET /upload/sign
+ * Returns a signed Cloudinary upload signature so the mobile client can upload
+ * directly to Cloudinary without routing the video binary through this server.
+ * The Cloudinary API secret is NEVER sent to the client.
+ */
+router.get('/sign', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const timestamp = Math.round(Date.now() / 1000);
+    const folder = 'sociall';
+    const resourceType = (req.query.resourceType as string) || 'video';
+
+    // Parameters that will be included in the upload (must match what the client sends)
+    const paramsToSign: Record<string, string | number> = {
+      timestamp,
+      folder,
+    };
+
+    const signature = cloudinary.utils.api_sign_request(
+      paramsToSign,
+      process.env.CLOUDINARY_SECRET as string
+    );
+
+    return res.json({
+      success: true,
+      signature,
+      timestamp,
+      folder,
+      cloudName: process.env.CLOUDINARY_NAME,
+      apiKey: process.env.CLOUDINARY_KEY,
+      resourceType,
+    });
+  } catch (error: any) {
+    log.error({ action: 'SIGN_FAILED' as any, error: error.message });
+    return res.status(500).json({ success: false, message: 'Failed to generate upload signature.' });
   }
 });
 

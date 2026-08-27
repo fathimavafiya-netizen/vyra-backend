@@ -137,6 +137,7 @@ export class AuthenticationFacade {
         isVerified: user.isVerified,
         mfaEnabled: user.mfaEnabled,
         isAdminSession: isAdmin,
+        settings: user.settings,
       },
       isNewUser: isNewRegistration,
       ...sessionDetails,

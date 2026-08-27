@@ -473,17 +473,23 @@ export class StoryController {
   // ─── Reels ──────────────────────────────────────────────────────────────────
 
   async getReelsFeed(req: Request, res: Response, next: NextFunction) {
+    console.log('[StoryController] getReelsFeed called');
     try {
       const userId = (req as any).user.id;
+      console.log('[StoryController] getReelsFeed userId:', userId);
       const { cursor, limit } = req.query;
+      console.log('[StoryController] getReelsFeed calling storyService');
       const reels = await storyService.getReelsFeed(
         userId,
         cursor as string | undefined,
         limit ? Number(limit) : undefined
       );
+      console.log('[StoryController] getReelsFeed reels count:', reels.length);
       const formattedReels = await Promise.all(reels.map(r => formatPostResponse(r, userId)));
+      console.log('[StoryController] getReelsFeed formattedReels count:', formattedReels.length);
       return res.json({ success: true, reels: formattedReels });
     } catch (e: any) {
+      console.error('[StoryController] getReelsFeed error:', e);
       next(e);
     }
   }

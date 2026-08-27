@@ -6,18 +6,91 @@ export class AiController {
   async generateCaption(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
       const imageUrl = req.body.imageUrl || req.body.mediaUrl;
-      const { prompt } = req.body;
+      const { prompt, tone, length } = req.body;
 
       if (!imageUrl && !prompt) {
         throw new Error('Either imageUrl or prompt is required');
       }
 
-      // If we have an image, run visual captioning. Otherwise fallback to text prompt generator.
-      const caption = imageUrl 
-        ? await aiService.generateCaption(imageUrl)
-        : `✨ Canned Caption for text prompt: "${prompt}". Created on Sociall 💫 #vibes`;
+      let caption = '';
 
-      return res.status(200).json({ success: true, caption });
+      if (imageUrl) {
+        caption = await aiService.generateCaption(imageUrl);
+      } else {
+        // Construct a prompt string that AiService will treat as a text prompt
+        const textPrompt = `Prompt: ${prompt}. Tone: ${tone || 'Casual'}. Length: ${length || 'Medium'}`;
+        caption = await aiService.generateCaption(textPrompt);
+      }
+
+      return res.status(200).json({ success: true, data: { caption, hashtags: ['#sociall', '#ai'] } });
+    } catch (e: any) {
+      return res.status(400).json({ success: false, message: e.message });
+    }
+  }
+
+  async generateTemplates(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      const { prompt, category, style } = req.body;
+      if (!prompt) throw new Error('Prompt is required');
+      
+      // Since AiService doesn't have a template generator yet, we'll use the generateCaption as a base to get Gemini to output JSON for templates.
+      const textPrompt = `Generate a JSON array of 3 social media template layouts for a ${category || 'Post'} about "${prompt}" in a ${style || 'Modern'} style. 
+      Return ONLY a JSON array with objects containing these exact fields: id, title, description, suggestedColors (array of 2 hex codes), suggestedCaption, layoutType (string: split, overlay, minimal).`;
+      
+      const responseText = await aiService.generateCaption(textPrompt);
+      
+      let templates = [];
+      try {
+        const cleaned = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
+        templates = JSON.parse(cleaned);
+      } catch (err) {
+        // Fallback if parsing fails
+        templates = [
+          {
+            id: 'tmpl_1',
+            title: `${style} ${category} Option 1`,
+            description: `A clean, ${style} layout perfect for a ${category} about ${prompt}.`,
+            suggestedColors: ['#FF5E3A', '#FF2A6D'],
+            suggestedCaption: `Option 1: The best ${category} for ${prompt}! ✨`,
+            layoutType: 'split'
+          }
+        ];
+      }
+
+      return res.status(200).json({ success: true, data: { templates } });
+    } catch (e: any) {
+      return res.status(400).json({ success: false, message: e.message });
+    }
+  }
+
+  async generateScript(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      const { prompt } = req.body;
+      if (!prompt) throw new Error('Prompt is required');
+      const script = await aiService.generateScript(prompt);
+      return res.status(200).json({ success: true, script });
+    } catch (e: any) {
+      return res.status(400).json({ success: false, message: e.message });
+    }
+  }
+
+  async generateAvatar(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      const { prompt } = req.body;
+      if (!prompt) throw new Error('Prompt is required');
+      const avatarUrl = await aiService.generateAvatar(prompt);
+      return res.status(200).json({ success: true, avatarUrl });
+    } catch (e: any) {
+      return res.status(400).json({ success: false, message: e.message });
+    }
+  }
+
+  async generateVoiceover(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      const { text } = req.body;
+      if (!text) throw new Error('Text is required');
+      const audioUrl = await aiService.generateVoiceover(text);
+      return res.status(200).json({ success: true, audioUrl });
     } catch (e: any) {
       return res.status(400).json({ success: false, message: e.message });
     }

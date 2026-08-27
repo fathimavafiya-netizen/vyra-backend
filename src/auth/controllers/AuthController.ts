@@ -13,6 +13,8 @@ import metricsService from '../../monitoring/metrics.service';
 import sessionRepository from '../repositories/SessionRepository';
 import deviceService from '../services/DeviceService';
 import authService from '../../services/AuthService';
+import cache from '../../utils/cache';
+import { v4 as uuidv4 } from 'uuid';
 
 // Lazily-constructed Google OAuth2 client — only used when GOOGLE_CLIENT_ID is set.
 const googleOAuth2Client = env.GOOGLE_CLIENT_ID ? new OAuth2Client(env.GOOGLE_CLIENT_ID) : null;
@@ -72,7 +74,7 @@ export class AuthController {
       return res.status(200).json({
         success: true,
         message: `OTP sent to ${cleanEmail}`,
-        data: isDev ? { devCode: code, devNote: 'Development mode active.' } : null,
+        data: (isDev || result.devCode) ? { devCode: result.devCode || code, devNote: 'Development mode active or fallback.' } : null,
       });
     } catch (e: any) {
       logger.error({ err: e, message: `Send email OTP error: ${e.message}` });
@@ -150,7 +152,7 @@ export class AuthController {
       return res.status(200).json({
         success: true,
         message: `OTP sent to ${cleanMobile}`,
-        data: isDev ? { devCode: code, devNote: 'Development mode active.' } : null,
+        data: (isDev || result.devCode) ? { devCode: result.devCode || code, devNote: 'Development mode active or fallback.' } : null,
       });
     } catch (e: any) {
       logger.error({ err: e, message: `Send mobile OTP error: ${e.message}` });
@@ -497,6 +499,8 @@ export class AuthController {
         appVersion,
         rememberDevice,
         pushToken,
+        otp,
+        registrationId,
       } = req.body;
 
       const bcrypt = require('bcryptjs');
@@ -537,124 +541,155 @@ export class AuthController {
         }
       }
 
-      // Hash password
-      const passwordHash = await bcrypt.hash(password, 10);
-
-      let user;
-      if (existingUser) {
-        // Upgrade existing user!
-        user = await prisma.user.update({
-          where: { id: existingUser.id },
-          data: {
-            fullName,
-            username,
-            password: passwordHash,
-            passwordHash,
-            phone: cleanMobile || existingUser.phone,
-            countryCode: countryCode || existingUser.countryCode,
-            provider: 'credentials',
-            emailVerified: cleanEmail ? true : existingUser.emailVerified,
-            phoneVerified: cleanMobile ? true : existingUser.phoneVerified,
-            isVerified: true,
-            emailVerifiedAt: cleanEmail ? new Date() : existingUser.emailVerifiedAt,
-            mobileVerifiedAt: cleanMobile ? new Date() : existingUser.mobileVerifiedAt,
-            profile: {
-              upsert: {
-                create: {
-                  name: fullName,
-                  username,
-                },
-                update: {
-                  name: fullName,
-                  username,
+      // Check if this is the OTP verification step
+      if (otp && registrationId) {
+        // Retrieve pending registration from cache
+        const cacheKey = `pending_reg:${registrationId}`;
+        const pendingReg = await cache.get<any>(cacheKey);
+        
+        if (!pendingReg) {
+          return res.status(400).json({
+            success: false,
+            code: 'REGISTRATION_EXPIRED',
+            message: 'Registration session expired or invalid. Please try registering again.',
+          });
+        }
+        
+        // Verify the OTP
+        const contact = cleanEmail || cleanMobile;
+        const type = cleanEmail ? 'EMAIL' : 'MOBILE';
+        
+        const { valid } = await otpUtil.verifyOtpFromDB(contact!, otp, type, 'REGISTRATION');
+        if (!valid) {
+          await metricsService.incrementMetric('otp_failed');
+          return res.status(400).json({ success: false, code: 'OTP_INVALID', message: 'Invalid or expired OTP.' });
+        }
+        
+        // Delete the pending registration so it can't be reused
+        await cache.del(cacheKey);
+        
+        // Hash password
+        const passwordHash = await bcrypt.hash(pendingReg.password, 10);
+        
+        let user;
+        if (existingUser) {
+          // Upgrade existing user!
+          user = await prisma.user.update({
+            where: { id: existingUser.id },
+            data: {
+              fullName: pendingReg.fullName,
+              username: pendingReg.username,
+              password: passwordHash,
+              passwordHash,
+              phone: cleanMobile || existingUser.phone,
+              countryCode: pendingReg.countryCode || existingUser.countryCode,
+              provider: 'credentials',
+              emailVerified: cleanEmail ? true : existingUser.emailVerified,
+              phoneVerified: cleanMobile ? true : existingUser.phoneVerified,
+              isVerified: true,
+              emailVerifiedAt: cleanEmail ? new Date() : existingUser.emailVerifiedAt,
+              mobileVerifiedAt: cleanMobile ? new Date() : existingUser.mobileVerifiedAt,
+              profile: {
+                upsert: {
+                  create: {
+                    name: pendingReg.fullName,
+                    username: pendingReg.username,
+                  },
+                  update: {
+                    name: pendingReg.fullName,
+                    username: pendingReg.username,
+                  }
                 }
               }
-            }
-          },
-          include: {
-            profile: true
+            },
+            include: { profile: true }
+          });
+        } else {
+          // Check unique username again just in case
+          const usernameExists = await prisma.profile.findUnique({ where: { username: pendingReg.username } });
+          if (usernameExists) {
+            return res.status(400).json({ success: false, code: 'USERNAME_TAKEN', message: 'Username is already taken.' });
           }
-        });
-      } else {
-        // Check unique username
-        const usernameExists = await prisma.profile.findUnique({ where: { username } });
-        if (usernameExists) {
-          return res.status(400).json({ success: false, code: 'USERNAME_TAKEN', message: 'Username is already taken.' });
-        }
 
-        // Create new User
-        user = await prisma.user.create({
-          data: {
-            email: cleanEmail,
-            mobile: cleanMobile,
-            password: passwordHash,
-            fullName,
-            username,
-            phone: cleanMobile,
-            countryCode,
-            passwordHash,
-            provider: 'credentials',
-            emailVerified: !!cleanEmail,
-            phoneVerified: !!cleanMobile,
-            isVerified: true,
-            role: 'USER',
-            emailVerifiedAt: cleanEmail ? new Date() : null,
-            mobileVerifiedAt: cleanMobile ? new Date() : null,
-            consentGivenAt: new Date(),
-            privacyVersion: '1.0',
-            termsVersion: '1.0',
-            profile: {
-              create: {
-                name: fullName,
-                username,
+          // Create new User
+          user = await prisma.user.create({
+            data: {
+              email: cleanEmail,
+              mobile: cleanMobile,
+              password: passwordHash,
+              fullName: pendingReg.fullName,
+              username: pendingReg.username,
+              phone: cleanMobile,
+              countryCode: pendingReg.countryCode,
+              passwordHash,
+              provider: 'credentials',
+              emailVerified: !!cleanEmail,
+              phoneVerified: !!cleanMobile,
+              isVerified: true,
+              role: 'USER',
+              profile: {
+                create: {
+                  name: pendingReg.fullName,
+                  username: pendingReg.username,
+                },
+              },
+              settings: {
+                create: {},
               },
             },
-            settings: {
-              create: {},
-            },
-          },
-          include: {
-            profile: true,
-          },
+            include: { profile: true }
+          });
+        }
+
+        logger.info({ action: LogAction.AUTH_REGISTER, userId: user.id, message: 'User registered successfully via OTP' });
+
+        return res.status(200).json({
+          success: true,
+          message: 'User registered successfully. Please log in.',
         });
       }
 
-      // Auto-login after registration
-      const result = await authenticationFacade.loginOrRegister({
-        email: cleanEmail || undefined,
-        mobile: cleanEmail ? undefined : (cleanMobile || undefined),
-        deviceId,
-        deviceName,
-        platform,
-        appVersion,
-        ipAddress: req.ip || 'unknown',
-        userAgent: req.get('user-agent') || 'unknown',
-        rememberDevice: !!rememberDevice,
-        pushToken,
-      });
+      // ─── First Step: Send OTP ───
+      // If we reach here, it means we are in step 1 of registration
+      
+      const usernameExists = await prisma.profile.findUnique({ where: { username } });
+      if (usernameExists) {
+        return res.status(400).json({ success: false, code: 'USERNAME_TAKEN', message: 'Username is already taken.' });
+      }
 
-      setAuthCookies(res, result.accessToken, result.refreshToken, !!rememberDevice);
+      const newRegistrationId = uuidv4();
+      const payload = {
+        fullName, username, password, countryCode,
+        deviceId, deviceName, platform, appVersion, rememberDevice, pushToken
+      };
+      
+      // Store in cache for 10 minutes
+      await cache.set(`pending_reg:${newRegistrationId}`, payload, 10 * 60);
+      
+      // Send OTP
+      const code = otpUtil.generateOtp();
+      const contact = cleanEmail || cleanMobile;
+      const type = cleanEmail ? 'EMAIL' : 'MOBILE';
+      
+      await otpUtil.saveOtpToDB(contact!, code, type, 'REGISTRATION');
+      
+      let otpResult;
+      if (type === 'EMAIL') {
+        otpResult = await otpUtil.sendOtpViaEmail(contact!, code);
+      } else {
+        otpResult = await otpUtil.sendOtpViaSms(contact!, code);
+      }
 
-      logger.info({ action: LogAction.AUTH_REGISTER, userId: user.id, message: 'User registered successfully' });
-      return res.status(200).json({
+      const isDev = process.env.NODE_ENV !== 'production';
+      return res.status(202).json({
         success: true,
-        message: 'Registration successful.',
-        data: {
-          user: {
-            id: user.id,
-            fullName: user.fullName,
-            username: user.username,
-            email: user.email,
-            phone: user.phone,
-            countryCode: user.countryCode,
-            profilePic: user.profile?.profilePic,
-            role: user.role,
-            isVerified: user.isVerified,
-          },
-          accessToken: result.accessToken,
-          refreshToken: result.refreshToken,
-        }
+        requireOtp: true,
+        registrationId: newRegistrationId,
+        message: `OTP sent to ${contact}`,
+        data: (isDev || otpResult.devCode) ? { devCode: otpResult.devCode || code, devNote: 'Development mode active or fallback.' } : null,
       });
+
+
     } catch (e: any) {
       logger.error({ err: e, message: `Register error: ${e.message}` });
       return res.status(400).json({ success: false, code: 'REGISTRATION_FAILED', message: e.message });
@@ -666,6 +701,7 @@ export class AuthController {
       const {
         email,
         mobile,
+        username,
         password,
         deviceId,
         deviceName,
@@ -678,6 +714,7 @@ export class AuthController {
       const bcrypt = require('bcryptjs');
       const cleanEmail = email ? email.trim().toLowerCase() : null;
       const cleanMobile = mobile ? mobile.trim() : null;
+      const cleanUsername = username ? username.trim().toLowerCase() : null;
 
       let user = null;
       if (cleanEmail) {
@@ -690,11 +727,16 @@ export class AuthController {
           where: { mobile: cleanMobile },
           include: { profile: true },
         });
+      } else if (cleanUsername) {
+        user = await prisma.user.findUnique({
+          where: { username: cleanUsername },
+          include: { profile: true },
+        });
       }
 
       if (!user) {
         // Return the same response as wrong-password to prevent account enumeration.
-        logger.warn({ action: LogAction.AUTH_LOGIN_FAILED, email: cleanEmail, mobile: cleanMobile, message: 'Invalid credentials' });
+        logger.warn({ action: LogAction.AUTH_LOGIN_FAILED, email: cleanEmail, mobile: cleanMobile, username: cleanUsername, message: 'Invalid credentials' });
         return res.status(400).json({ success: false, code: 'LOGIN_FAILED', message: 'Invalid credentials.' });
       }
 
@@ -703,9 +745,9 @@ export class AuthController {
       }
 
       // Check password — same error code/message as user-not-found to prevent enumeration.
-      const isMatch = await bcrypt.compare(password, user.password);
-      if (!isMatch) {
-        logger.warn({ action: LogAction.AUTH_LOGIN_FAILED, email: cleanEmail, mobile: cleanMobile, message: 'Invalid credentials' });
+      const isPasswordValid = await bcrypt.compare(password, user.password);
+      if (!isPasswordValid) {
+        logger.warn({ action: LogAction.AUTH_LOGIN_FAILED, email: cleanEmail, mobile: cleanMobile, username: cleanUsername, message: 'Invalid credentials' });
         return res.status(400).json({ success: false, code: 'LOGIN_FAILED', message: 'Invalid credentials.' });
       }
 
@@ -789,17 +831,18 @@ export class AuthController {
       const code = otpUtil.generateOtp();
       await otpUtil.saveOtpToDB(contact, code, type, purpose);
 
+      let result;
       if (type === 'EMAIL') {
-        await otpUtil.sendOtpViaEmail(contact, code);
+        result = await otpUtil.sendOtpViaEmail(contact, code);
       } else {
-        await otpUtil.sendOtpViaSms(contact, code);
+        result = await otpUtil.sendOtpViaSms(contact, code);
       }
 
       const isDev = process.env.NODE_ENV !== 'production';
       return res.status(200).json({
         success: true,
         message: `OTP sent successfully.`,
-        data: isDev ? { devCode: code } : null,
+        data: (isDev || result.devCode) ? { devCode: result.devCode || code } : null,
       });
     } catch (e: any) {
       return res.status(400).json({ success: false, message: e.message });
@@ -1065,17 +1108,18 @@ export class AuthController {
       const code = otpUtil.generateOtp();
       await otpUtil.saveOtpToDB(contact, code, type, 'PASSWORD_RESET');
 
+      let result;
       if (type === 'EMAIL') {
-        await otpUtil.sendOtpViaEmail(contact, code);
+        result = await otpUtil.sendOtpViaEmail(contact, code);
       } else {
-        await otpUtil.sendOtpViaSms(contact, code);
+        result = await otpUtil.sendOtpViaSms(contact, code);
       }
 
       const isDev = process.env.NODE_ENV !== 'production';
       return res.status(200).json({
         success: true,
         message: `Reset OTP sent successfully.`,
-        data: isDev ? { devCode: code } : null,
+        data: (isDev || result.devCode) ? { devCode: result.devCode || code } : null,
       });
     } catch (e: any) {
       return res.status(400).json({ success: false, message: e.message });

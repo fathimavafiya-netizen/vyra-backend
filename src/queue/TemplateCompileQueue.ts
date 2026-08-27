@@ -64,11 +64,7 @@ const handleTemplateCompile = async (payload: TemplateCompilePayload): Promise<b
     await updateStatus(jobId, userId, 'FAILED', { errorMessage: error.message });
     throw error;
   } finally {
-    try {
-      if (compiledVideoPath && fs.existsSync(compiledVideoPath)) {
-        await fs.promises.unlink(compiledVideoPath);
-      }
-    } catch (e) {}
+    // Keep compiled video for retries, rely on cron job for cleanup
   }
 };
 

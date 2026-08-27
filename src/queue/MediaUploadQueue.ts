@@ -56,9 +56,7 @@ const handleImageUpload = async (payload: UploadPayload): Promise<boolean> => {
     await updateStatus(jobId, userId, 'FAILED', { errorMessage: error.message });
     throw error;
   } finally {
-    try {
-      if (fs.existsSync(filePath)) await fs.promises.unlink(filePath);
-    } catch (e) {}
+    // Rely on cron job for cleanup so retries can access the file
   }
 };
 
@@ -103,8 +101,8 @@ const handleVideoUpload = async (payload: UploadPayload): Promise<boolean> => {
     await updateStatus(jobId, userId, 'FAILED', { errorMessage: error.message });
     throw error;
   } finally {
+    // Keep original file for retries, rely on cron job
     try {
-      if (fs.existsSync(filePath)) await fs.promises.unlink(filePath);
       for (const tempFile of processedFiles) {
         if (fs.existsSync(tempFile)) await fs.promises.unlink(tempFile);
       }

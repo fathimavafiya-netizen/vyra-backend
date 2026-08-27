@@ -2,13 +2,13 @@ import { Response, NextFunction } from 'express';
 import postService from '../services/PostService';
 import { AuthenticatedRequest } from '../middleware/authMiddleware';
 
-export async function formatPostResponse(p: any, viewerId?: string): Promise<any> {
+export async function formatPostResponse(p: any, viewerId?: string, cacheContext?: { blockedUserIds: string[], restrictedRelations: any[] }): Promise<any> {
   if (!p) return null;
 
-  let blockedUserIds: string[] = [];
-  let restrictedRelations: any[] = [];
+  let blockedUserIds: string[] = cacheContext?.blockedUserIds || [];
+  let restrictedRelations: any[] = cacheContext?.restrictedRelations || [];
 
-  if (viewerId) {
+  if (viewerId && !cacheContext) {
     const { default: prisma } = require('../config/db');
     try {
       const blocks = await prisma.blockedUser.findMany({
@@ -155,7 +155,25 @@ export class PostController {
         sort,
       }) as any;
       
-      const formattedPosts = await Promise.all(posts.map((p: any) => formatPostResponse(p, userId)));
+      const cacheContext = { blockedUserIds: [] as string[], restrictedRelations: [] as any[] };
+      if (userId) {
+        const { default: prisma } = require('../config/db');
+        try {
+          const blocks = await prisma.blockedUser.findMany({
+            where: { OR: [{ blockerId: userId }, { blockedId: userId }] }
+          });
+          cacheContext.blockedUserIds = blocks.map((b: any) => b.blockerId === userId ? b.blockedId : b.blockerId);
+          
+          const postUserIds = [...new Set(posts.map((p: any) => p.userId))];
+          if (postUserIds.length > 0) {
+            cacheContext.restrictedRelations = await prisma.restrictedUser.findMany({
+              where: { restrictorId: { in: postUserIds as string[] } }
+            });
+          }
+        } catch (e) {}
+      }
+
+      const formattedPosts = await Promise.all(posts.map((p: any) => formatPostResponse(p, userId, cacheContext)));
 
       return res.status(200).json({ success: true, posts: formattedPosts, nextCursor, hasMore });
     } catch (e: any) {
@@ -170,7 +188,25 @@ export class PostController {
       if (!userId) throw new Error('User identifier not provided');
 
       const posts = await postService.getUserPosts(userId, limit);
-      const formattedPosts = await Promise.all(posts.map(p => formatPostResponse(p, req.user?.id)));
+      const cacheContext = { blockedUserIds: [] as string[], restrictedRelations: [] as any[] };
+      const viewerId = req.user?.id;
+      if (viewerId) {
+        const { default: prisma } = require('../config/db');
+        try {
+          const blocks = await prisma.blockedUser.findMany({
+            where: { OR: [{ blockerId: viewerId }, { blockedId: viewerId }] }
+          });
+          cacheContext.blockedUserIds = blocks.map((b: any) => b.blockerId === viewerId ? b.blockedId : b.blockerId);
+          
+          const postUserIds = [...new Set(posts.map((p: any) => p.userId))];
+          if (postUserIds.length > 0) {
+            cacheContext.restrictedRelations = await prisma.restrictedUser.findMany({
+              where: { restrictorId: { in: postUserIds as string[] } }
+            });
+          }
+        } catch (e) {}
+      }
+      const formattedPosts = await Promise.all(posts.map(p => formatPostResponse(p, viewerId, cacheContext)));
       return res.status(200).json({ success: true, posts: formattedPosts });
     } catch (e: any) {
       return res.status(400).json({ success: false, message: e.message });
@@ -299,7 +335,25 @@ export class PostController {
       if (!userId) throw new Error('Unauthorized');
 
       const posts = await postService.getSavedPosts(userId);
-      const formattedPosts = await Promise.all(posts.map(p => formatPostResponse(p, userId)));
+      const cacheContext = { blockedUserIds: [] as string[], restrictedRelations: [] as any[] };
+      const viewerId = userId;
+      if (viewerId) {
+        const { default: prisma } = require('../config/db');
+        try {
+          const blocks = await prisma.blockedUser.findMany({
+            where: { OR: [{ blockerId: viewerId }, { blockedId: viewerId }] }
+          });
+          cacheContext.blockedUserIds = blocks.map((b: any) => b.blockerId === viewerId ? b.blockedId : b.blockerId);
+          
+          const postUserIds = [...new Set(posts.map((p: any) => p.userId))];
+          if (postUserIds.length > 0) {
+            cacheContext.restrictedRelations = await prisma.restrictedUser.findMany({
+              where: { restrictorId: { in: postUserIds as string[] } }
+            });
+          }
+        } catch (e) {}
+      }
+      const formattedPosts = await Promise.all(posts.map(p => formatPostResponse(p, userId, cacheContext)));
       return res.status(200).json({ success: true, posts: formattedPosts });
     } catch (e: any) {
       return res.status(400).json({ success: false, message: e.message });
@@ -523,8 +577,26 @@ export class PostController {
         score: p.views.length + p.likes.length * 2 + p.comments.length * 5
       })).sort((a: any, b: any) => b.score - a.score);
 
+      const cacheContext = { blockedUserIds: [] as string[], restrictedRelations: [] as any[] };
+      const viewerId = req.user?.id;
+      if (viewerId) {
+        try {
+          const blocks = await prisma.blockedUser.findMany({
+            where: { OR: [{ blockerId: viewerId }, { blockedId: viewerId }] }
+          });
+          cacheContext.blockedUserIds = blocks.map((b: any) => b.blockerId === viewerId ? b.blockedId : b.blockerId);
+          
+          const postUserIds = [...new Set(scores.map((x: any) => x.p.userId))];
+          if (postUserIds.length > 0) {
+            cacheContext.restrictedRelations = await prisma.restrictedUser.findMany({
+              where: { restrictorId: { in: postUserIds as string[] } }
+            });
+          }
+        } catch (e) {}
+      }
+
       const trendingPosts = await Promise.all(
-        scores.map((x: any) => formatPostResponse(x.p))
+        scores.map((x: any) => formatPostResponse(x.p, viewerId, cacheContext))
       );
 
       return res.status(200).json({ success: true, posts: trendingPosts });

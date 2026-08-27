@@ -27,6 +27,9 @@ export interface AiProvider {
   generateCaption(imageUrl: string): Promise<string>;
   suggestHashtags(captionText: string): Promise<string[]>;
   moderateContent(imageUrl: string): Promise<{ safe: boolean; labels: string[] }>;
+  generateScript(prompt: string): Promise<string>;
+  generateAvatar(prompt: string): Promise<string>;
+  generateVoiceover(text: string): Promise<string>;
 }
 
 // ─── Gemini Provider Implementation ───
@@ -121,6 +124,24 @@ class GeminiProvider implements AiProvider {
       return { safe: true, labels: [] };
     }
   }
+
+  async generateScript(prompt: string): Promise<string> {
+    logger.debug(`[Gemini AI] Generating script for prompt: ${prompt}`);
+    const model = this.genAI.getGenerativeModel({ model: 'gemini-1.5-pro' });
+    const result = await model.generateContent(`Write a short, engaging 30-second video script about: ${prompt}`);
+    return result.response.text().trim();
+  }
+
+  async generateAvatar(prompt: string): Promise<string> {
+    logger.info(`[Pollinations AI] Generating avatar for prompt: ${prompt}`);
+    const seed = Math.floor(Math.random() * 100000);
+    return `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}.jpg?seed=${seed}&width=800&height=800&nologo=true`;
+  }
+
+  async generateVoiceover(text: string): Promise<string> {
+    logger.info(`[Google TTS] Generating voiceover for text`);
+    return `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(text)}&tl=en&client=tw-ob`;
+  }
 }
 
 // ─── Mock Provider Implementation ───
@@ -146,6 +167,22 @@ class MockProvider implements AiProvider {
   async moderateContent(imageUrl: string): Promise<{ safe: boolean; labels: string[] }> {
     logger.debug(`[Mock AI] Simulating content moderation`);
     return { safe: true, labels: [] };
+  }
+
+  async generateScript(prompt: string): Promise<string> {
+    logger.debug(`[Mock AI] Simulating script generation`);
+    return `[Mock Script]\n\nHey everyone! Today we're talking about ${prompt}.\n\nFirst, make sure to like and subscribe!`;
+  }
+
+  async generateAvatar(prompt: string): Promise<string> {
+    logger.info(`[Pollinations AI] Generating avatar for prompt: ${prompt}`);
+    const seed = Math.floor(Math.random() * 100000);
+    return `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}.jpg?seed=${seed}&width=800&height=800&nologo=true`;
+  }
+
+  async generateVoiceover(text: string): Promise<string> {
+    logger.info(`[Google TTS] Generating voiceover for text`);
+    return `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(text)}&tl=en&client=tw-ob`;
   }
 }
 
@@ -183,6 +220,18 @@ export class AiService {
 
   async moderateContent(imageUrl: string): Promise<{ safe: boolean; labels: string[] }> {
     return activeProvider.moderateContent(imageUrl);
+  }
+
+  async generateScript(prompt: string): Promise<string> {
+    return activeProvider.generateScript(prompt);
+  }
+
+  async generateAvatar(prompt: string): Promise<string> {
+    return activeProvider.generateAvatar(prompt);
+  }
+
+  async generateVoiceover(text: string): Promise<string> {
+    return activeProvider.generateVoiceover(text);
   }
 
   async createJob(

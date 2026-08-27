@@ -1,21 +1,24 @@
-import prisma from './src/config/db';
+import { PrismaClient } from '@prisma/client';
 
-async function test() {
-  const cleanQuery = 'flowe';
-  const searchWord = 'flowe';
-  const where: any = { type: { not: 'STORY' } };
-  where.OR = [
-    { caption: { contains: cleanQuery, mode: 'insensitive' } },
-    { caption: { contains: searchWord, mode: 'insensitive' } },
-    { hashtags: { some: { hashtag: { name: { contains: searchWord, mode: 'insensitive' } } } } },
-    { user: { profile: { name: { contains: searchWord, mode: 'insensitive' } } } },
-    { user: { profile: { username: { contains: searchWord, mode: 'insensitive' } } } },
-  ];
-  const posts = await prisma.post.findMany({
-    where,
-    take: 20,
-  });
-  console.log('Posts count:', posts.length);
-  console.log('Unique Posts count:', new Set(posts.map(p => p.id)).size);
+const prisma = new PrismaClient({
+  log: ['query', 'info', 'warn', 'error'],
+});
+
+async function main() {
+  try {
+    console.log('Connecting to Prisma...');
+    const result = await prisma.$queryRaw`SELECT NOW()`;
+    console.log('Query result:', result);
+
+    const user = await prisma.user.findUnique({
+      where: { email: 'aria@sociall.com' }
+    });
+    console.log('Test user:', user ? 'Found' : 'Not found');
+  } catch (error) {
+    console.error('Prisma Error:', error);
+  } finally {
+    await prisma.$disconnect();
+  }
 }
-test().catch(console.error).finally(() => process.exit(0));
+
+main();

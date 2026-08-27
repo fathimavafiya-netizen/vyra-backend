@@ -213,8 +213,6 @@ export class PostRepository {
     } else {
       where.type = { notIn: ['STORY'] }; // Exclude stories
     }
-
-    // 2. Search keyword filter
     if (options.search) {
       const searchLower = options.search.toLowerCase();
       where.OR = [

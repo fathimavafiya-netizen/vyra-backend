@@ -140,7 +140,7 @@ model UserSettings {
   userId            String   @unique
   user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   isPrivate         Boolean  @default(false)
-  darkMode          Boolean  @default(false)
+  darkMode          Boolean  @default(true)
   likesEnabled      Boolean  @default(true)
   commentsEnabled   Boolean  @default(true)
   followersEnabled  Boolean  @default(true)

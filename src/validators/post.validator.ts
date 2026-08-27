@@ -7,6 +7,20 @@ export const createPostSchema = z.object({
     mediaUrl: z.string().url('Invalid media URL').optional(),
     duration: z.number().nonnegative().optional(),
     size: z.number().nonnegative().optional(),
+    thumbnailUrl: z.string().url('Invalid thumbnail URL').optional(),
+    musicTrackId: z.string().optional(),
+    originalPostId: z.string().optional(),
+    status: z.string().optional(),
+    hashtags: z.array(z.string()).optional(),
+    media: z.array(
+      z.object({
+        url: z.string().url('Invalid media URL'),
+        type: z.enum(['IMAGE', 'VIDEO', 'AUDIO', 'image', 'video', 'audio']).optional(),
+        duration: z.number().optional(),
+        size: z.number().optional(),
+        thumbnailUrl: z.string().optional(),
+      })
+    ).optional(),
   }),
 });
 

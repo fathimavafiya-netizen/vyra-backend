@@ -82,26 +82,43 @@ const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$
 
 export const registerSchema = z.object({
   body: z.object({
-    fullName: z.string().min(2, 'Full Name must be at least 2 characters long'),
-    username: z.string().min(3, 'Username must be at least 3 characters long'),
+    fullName: z.string().min(2, 'Full Name must be at least 2 characters long').optional(),
+    username: z.string().min(3, 'Username must be at least 3 characters long').optional(),
     email: emailSchema.optional(),
     mobile: mobileSchema.optional(),
     countryCode: z.string().optional(),
-    password: z.string().regex(passwordRegex, 'Password must be at least 8 characters long, contain at least one uppercase letter, one lowercase letter, one number, and one special character'),
-    confirmPassword: z.string(),
-    consentGiven: z.boolean().refine(val => val === true, 'You must accept the Terms and Conditions'),
-    deviceId: z.string().min(1, 'deviceId is required'),
-    deviceName: z.string().min(1, 'deviceName is required'),
-    platform: z.preprocess((val) => String(val).toUpperCase(), z.enum(['IOS', 'ANDROID', 'WEB'])),
-    appVersion: z.string().min(1, 'appVersion is required'),
+    password: z.string().regex(passwordRegex, 'Password must be at least 8 characters long, contain at least one uppercase letter, one lowercase letter, one number, and one special character').optional(),
+    confirmPassword: z.string().optional(),
+    consentGiven: z.boolean().optional(),
+    deviceId: z.string().optional(),
+    deviceName: z.string().optional(),
+    platform: z.preprocess((val) => val ? String(val).toUpperCase() : undefined, z.enum(['IOS', 'ANDROID', 'WEB']).optional()),
+    appVersion: z.string().optional(),
     rememberDevice: z.boolean().optional().default(false),
     pushToken: z.string().optional(),
-  }).refine(data => data.email || data.mobile, {
+    otp: otpSchema.optional(),
+    registrationId: z.string().optional(),
+  }).refine(data => data.email || data.mobile || data.registrationId, {
     message: 'Either email or mobile number is required',
     path: ['email']
-  }).refine(data => data.password === data.confirmPassword, {
+  }).refine(data => {
+    if (data.otp && data.registrationId) return true; // Step 2 doesn't need passwords
+    return data.password === data.confirmPassword;
+  }, {
     message: 'Passwords do not match',
     path: ['confirmPassword']
+  }).refine(data => {
+    if (data.otp && data.registrationId) return true; // Step 2 skips these
+    return !!data.fullName && !!data.username && !!data.password && data.consentGiven === true;
+  }, {
+    message: 'Missing required fields for registration',
+    path: ['fullName']
+  }).refine(data => {
+    if (data.otp && data.registrationId) return true; // Step 2 skips these
+    return !!data.deviceId && !!data.deviceName && !!data.platform && !!data.appVersion;
+  }, {
+    message: 'Missing device metadata for registration',
+    path: ['deviceId']
   })
 });
 
@@ -109,6 +126,7 @@ export const loginSchema = z.object({
   body: z.object({
     email: emailSchema.optional(),
     mobile: mobileSchema.optional(),
+    username: z.string().optional(),
     password: z.string().min(1, 'Password is required'),
     deviceId: z.string().min(1, 'deviceId is required'),
     deviceName: z.string().min(1, 'deviceName is required'),
@@ -116,8 +134,8 @@ export const loginSchema = z.object({
     appVersion: z.string().min(1, 'appVersion is required'),
     rememberDevice: z.boolean().optional().default(false),
     pushToken: z.string().optional()
-  }).refine(data => data.email || data.mobile, {
-    message: 'Either email or mobile number is required',
+  }).refine(data => data.email || data.mobile || data.username, {
+    message: 'Either email, mobile, or username is required',
     path: ['email']
   })
 });

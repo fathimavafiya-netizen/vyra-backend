@@ -4,6 +4,17 @@ import twilio from 'twilio';
 import logger from './logger';
 import bcrypt from 'bcryptjs';
 import { randomInt } from 'crypto';
+import nodemailer from 'nodemailer';
+
+const emailProvider = process.env.EMAIL_PROVIDER || 'resend'; // 'resend' or 'gmail'
+
+const gmailTransporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_APP_PASSWORD,
+  },
+});
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -199,9 +210,46 @@ export const sendOtpViaEmail = async (email: string, code: string): Promise<{ su
   logger.info(`📧 EMAIL OTP for [${email}] → CODE: ${code}`);
   logger.info(`==========================================\n`);
 
+  if (emailProvider === 'gmail') {
+    if (!process.env.SMTP_USER || !process.env.SMTP_APP_PASSWORD) {
+      logger.warn('⚠️ SMTP_USER or SMTP_APP_PASSWORD missing. OTP only shown in console.');
+      if (isDev) return { success: true, devCode: code };
+      throw new Error('Email delivery service is not configured.');
+    }
+
+    try {
+      await gmailTransporter.sendMail({
+        from: process.env.EMAIL_FROM || process.env.SMTP_USER,
+        to: email,
+        subject: `${code} is your Sociall verification code`,
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 32px; background: #090A0F; color: #fff; border-radius: 16px;">
+            <h1 style="color: #00F2FE; font-size: 32px; margin-bottom: 4px;">Sociall</h1>
+            <p style="color: #8E9A9E; margin-top: 0;">Create. Connect. Inspire.</p>
+            <hr style="border-color: rgba(255,255,255,0.08); margin: 24px 0;" />
+            <p style="font-size: 16px; color: #C5C6C7;">Your one-time verification code is:</p>
+            <div style="background: rgba(0,242,254,0.1); border: 1px solid #00F2FE; border-radius: 12px; padding: 24px; text-align: center; margin: 24px 0;">
+              <span style="font-size: 48px; font-weight: bold; letter-spacing: 12px; color: #00F2FE;">${code}</span>
+            </div>
+            <p style="color: #8E9A9E; font-size: 14px;">This code expires in <strong style="color:#fff;">5 minutes</strong>. Do not share it with anyone.</p>
+            <p style="color: #45A29E; font-size: 12px; margin-top: 32px;">If you did not request this, you can safely ignore this email.</p>
+          </div>
+        `,
+      });
+      logger.info(`📧 [EMAIL SENT] OTP delivered to ${email} via Gmail SMTP.`);
+      return { success: true };
+    } catch (err: any) {
+      logger.error(`❌ Failed to send email OTP via Gmail SMTP: ${err.message}`);
+      if (isDev) return { success: true, devCode: code };
+      throw new Error('Failed to send email OTP.');
+    }
+  }
+
+  // Resend Fallback
   if (!process.env.RESEND_API_KEY) {
     logger.warn('⚠️ RESEND_API_KEY missing. OTP only shown in console.');
-    return { success: true, devCode: isDev ? code : undefined };
+    if (isDev) return { success: true, devCode: code };
+    throw new Error('Email delivery service is not configured.');
   }
 
   try {
@@ -226,14 +274,16 @@ export const sendOtpViaEmail = async (email: string, code: string): Promise<{ su
 
     if (error) {
       logger.error(`❌ Resend error: ${JSON.stringify(error)}`);
-      return { success: true, devCode: isDev ? code : undefined };
+      if (isDev) return { success: true, devCode: code };
+      throw new Error('Failed to send email OTP.');
     }
 
     logger.info(`📧 [EMAIL SENT] OTP delivered to ${email} via Resend. ID: ${data?.id}`);
     return { success: true };
   } catch (err: any) {
     logger.error(`❌ Failed to send email OTP: ${err.message}`);
-    return { success: true, devCode: isDev ? code : undefined };
+    if (isDev) return { success: true, devCode: code };
+    throw new Error('Failed to send email OTP.');
   }
 };
 
@@ -248,7 +298,8 @@ export const sendOtpViaSms = async (mobile: string, code: string): Promise<{ suc
   if (isUsaNumber) {
     if (!twilioClient || !twilioPhone) {
       logger.warn('⚠️ Twilio config missing. Twilio SMS skipped.');
-      return { success: true, devCode: isDev ? code : undefined };
+      if (isDev) return { success: true, devCode: code };
+      throw new Error('SMS delivery service is not configured.');
     }
 
     try {
@@ -261,14 +312,16 @@ export const sendOtpViaSms = async (mobile: string, code: string): Promise<{ suc
       return { success: true };
     } catch (err: any) {
       logger.error(`❌ Failed to send SMS via Twilio: ${err.message}`);
-      return { success: true, devCode: isDev ? code : undefined };
+      if (isDev) return { success: true, devCode: code };
+      throw new Error('Failed to send SMS OTP.');
     }
   } else {
     const apiKey = process.env.FAST2SMS_API_KEY;
 
     if (!apiKey) {
       logger.warn('⚠️ FAST2SMS_API_KEY missing. Fast2SMS SMS skipped.');
-      return { success: true, devCode: isDev ? code : undefined };
+      if (isDev) return { success: true, devCode: code };
+      throw new Error('SMS delivery service is not configured.');
     }
 
     try {
@@ -291,15 +344,17 @@ export const sendOtpViaSms = async (mobile: string, code: string): Promise<{ suc
       const responseData = await response.json() as any;
 
       if (responseData.return === true) {
-        logger.info(`📲 [FAST2SMS SMS SENT] Sent to ${mobile} via Fast2SMS Quick Route`);
+        logger.info(`✅ [FAST2SMS SMS SENT] Sent to ${mobile} via Fast2SMS Quick Route`);
         return { success: true };
       } else {
         logger.error(`❌ Fast2SMS error: ${JSON.stringify(responseData)}`);
-        return { success: true, devCode: isDev ? code : undefined };
+        if (isDev) return { success: true, devCode: code };
+        throw new Error('Failed to send SMS OTP.');
       }
     } catch (err: any) {
       logger.error(`❌ Failed to send SMS via Fast2SMS: ${err.message}`);
-      return { success: true, devCode: isDev ? code : undefined };
+      if (isDev) return { success: true, devCode: code };
+      throw new Error('Failed to send SMS OTP.');
     }
   }
 };

@@ -12,6 +12,9 @@ router.post('/background', aiController.removeBackground);
 router.post('/filter', aiController.applyFilter);
 router.post('/hashtags', aiController.generateHashtags);
 router.post('/moderate', aiController.moderateContent);
+router.post('/script', aiController.generateScript);
+router.post('/avatar', aiController.generateAvatar);
+router.post('/voiceover', aiController.generateVoiceover);
 
 // AI Jobs & History Endpoints
 router.get('/job/:id', aiController.getJob);
@@ -20,6 +23,8 @@ router.get('/history', aiController.getHistory);
 // Client Compatibility Aliases
 router.post('/background-replace', aiController.removeBackground);
 router.post('/style-transfer', aiController.applyFilter);
+router.post('/generate-caption', aiController.generateCaption);
+router.post('/generate-templates', aiController.generateTemplates);
 router.post('/generate-metadata', async (req, res) => {
   try {
     const prompt = req.body.prompt || '';
