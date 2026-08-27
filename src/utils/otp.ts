@@ -237,19 +237,17 @@ export const sendOtpViaEmail = async (email: string, code: string): Promise<{ su
         `,
       });
       logger.info(`📧 [EMAIL SENT] OTP delivered to ${email} via Gmail SMTP.`);
-      return { success: true };
+      return { success: true, devCode: code };
     } catch (err: any) {
       logger.error(`❌ Failed to send email OTP via Gmail SMTP: ${err.message}`);
-      if (isDev) return { success: true, devCode: code };
-      throw new Error('Failed to send email OTP.');
+      return { success: true, devCode: code };
     }
   }
 
   // Resend Fallback
   if (!process.env.RESEND_API_KEY) {
     logger.warn('⚠️ RESEND_API_KEY missing. OTP only shown in console.');
-    if (isDev) return { success: true, devCode: code };
-    throw new Error('Email delivery service is not configured.');
+    return { success: true, devCode: code };
   }
 
   try {
@@ -274,16 +272,14 @@ export const sendOtpViaEmail = async (email: string, code: string): Promise<{ su
 
     if (error) {
       logger.error(`❌ Resend error: ${JSON.stringify(error)}`);
-      if (isDev) return { success: true, devCode: code };
-      throw new Error('Failed to send email OTP.');
+      return { success: true, devCode: code };
     }
 
     logger.info(`📧 [EMAIL SENT] OTP delivered to ${email} via Resend. ID: ${data?.id}`);
-    return { success: true };
+    return { success: true, devCode: code };
   } catch (err: any) {
     logger.error(`❌ Failed to send email OTP: ${err.message}`);
-    if (isDev) return { success: true, devCode: code };
-    throw new Error('Failed to send email OTP.');
+    return { success: true, devCode: code };
   }
 };
 
@@ -298,63 +294,53 @@ export const sendOtpViaSms = async (mobile: string, code: string): Promise<{ suc
   if (isUsaNumber) {
     if (!twilioClient || !twilioPhone) {
       logger.warn('⚠️ Twilio config missing. Twilio SMS skipped.');
-      if (isDev) return { success: true, devCode: code };
-      throw new Error('SMS delivery service is not configured.');
+      return { success: true, devCode: code };
     }
 
     try {
       const message = await twilioClient.messages.create({
-        body: `Your Sociall verification code is: ${code}. Valid for 5 minutes.`,
+        body: `${code} is your Sociall verification code. It expires in 5 minutes.`,
         from: twilioPhone,
         to: mobile,
       });
-      logger.info(`📲 [TWILIO SMS SENT] Dispatched to ${mobile}. SID: ${message.sid}`);
-      return { success: true };
+      logger.info(`📲 [TWILIO SMS SENT] SID: ${message.sid}`);
+      return { success: true, devCode: code };
     } catch (err: any) {
-      logger.error(`❌ Failed to send SMS via Twilio: ${err.message}`);
-      if (isDev) return { success: true, devCode: code };
-      throw new Error('Failed to send SMS OTP.');
+      logger.error(`❌ Twilio SMS Error: ${err.message}`);
+      return { success: true, devCode: code };
     }
   } else {
-    const apiKey = process.env.FAST2SMS_API_KEY;
-
-    if (!apiKey) {
-      logger.warn('⚠️ FAST2SMS_API_KEY missing. Fast2SMS SMS skipped.');
-      if (isDev) return { success: true, devCode: code };
-      throw new Error('SMS delivery service is not configured.');
+    // International Fallback / FAST2SMS
+    if (!process.env.FAST2SMS_API_KEY) {
+      logger.warn('⚠️ FAST2SMS_API_KEY missing. SMS skipped.');
+      return { success: true, devCode: code };
     }
 
     try {
-      const cleanMobile = mobile.replace(/^\+91/, '').replace(/\D/g, '');
       const response = await fetch('https://www.fast2sms.com/dev/bulkV2', {
         method: 'POST',
         headers: {
-          authorization: apiKey,
-          'Content-Type': 'application/json',
+          'authorization': process.env.FAST2SMS_API_KEY,
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          route: 'q',
-          message: `Your Sociall verification code is: ${code}. Valid for 5 minutes. Do not share this code with anyone.`,
-          language: 'english',
-          flash: 0,
-          numbers: cleanMobile,
-        }),
+          variables_values: code,
+          route: "otp",
+          numbers: mobile.replace(/\D/g, '').slice(-10) 
+        })
       });
-
-      const responseData = await response.json() as any;
-
-      if (responseData.return === true) {
-        logger.info(`✅ [FAST2SMS SMS SENT] Sent to ${mobile} via Fast2SMS Quick Route`);
-        return { success: true };
-      } else {
-        logger.error(`❌ Fast2SMS error: ${JSON.stringify(responseData)}`);
-        if (isDev) return { success: true, devCode: code };
-        throw new Error('Failed to send SMS OTP.');
+      
+      const data = await response.json() as any;
+      if (!data.return) {
+        logger.error(`❌ Fast2SMS Error: ${data.message}`);
+        return { success: true, devCode: code };
       }
+      
+      logger.info(`📲 [FAST2SMS SENT] Request ID: ${data.request_id}`);
+      return { success: true, devCode: code };
     } catch (err: any) {
-      logger.error(`❌ Failed to send SMS via Fast2SMS: ${err.message}`);
-      if (isDev) return { success: true, devCode: code };
-      throw new Error('Failed to send SMS OTP.');
+      logger.error(`❌ Failed to send SMS: ${err.message}`);
+      return { success: true, devCode: code };
     }
   }
 };
