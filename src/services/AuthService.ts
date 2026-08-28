@@ -95,9 +95,9 @@ export class AuthService {
           settings: {
             create: {},
           },
-        },
         include: {
           profile: true,
+          settings: true,
         },
       });
       return newUser;
@@ -155,6 +155,7 @@ export class AuthService {
         role: user.role,
         isVerified: user.isVerified,
         mfaEnabled: user.mfaEnabled,
+        settings: user.settings,
       },
       accessToken,
       refreshToken,
@@ -196,7 +197,7 @@ export class AuthService {
             { mobile: (data.mobile || data.email)?.trim() }
           ]
         },
-        include: { profile: true }
+        include: { profile: true, settings: true }
       });
     }
 
@@ -331,6 +332,7 @@ export class AuthService {
         role: user.role,
         isVerified: user.isVerified,
         mfaEnabled: user.mfaEnabled,
+        settings: user.settings,
         followers: followersList.map((f: any) => f.followerId),
         following: followingList.map((f: any) => f.followingId),
         sentRequests: sentList.map((r: any) => r.receiverId),
