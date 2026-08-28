@@ -135,7 +135,7 @@ class GeminiProvider implements AiProvider {
   async generateAvatar(prompt: string): Promise<string> {
     logger.info(`[Pollinations AI] Generating avatar for prompt: ${prompt}`);
     const seed = Math.floor(Math.random() * 100000);
-    return `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}.jpg?seed=${seed}&width=800&height=800&nologo=true`;
+    return `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?seed=${seed}&width=800&height=800&nologo=true`;
   }
 
   async generateVoiceover(text: string): Promise<string> {
@@ -177,7 +177,7 @@ class MockProvider implements AiProvider {
   async generateAvatar(prompt: string): Promise<string> {
     logger.info(`[Pollinations AI] Generating avatar for prompt: ${prompt}`);
     const seed = Math.floor(Math.random() * 100000);
-    return `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}.jpg?seed=${seed}&width=800&height=800&nologo=true`;
+    return `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?seed=${seed}&width=800&height=800&nologo=true`;
   }
 
   async generateVoiceover(text: string): Promise<string> {
