@@ -71,9 +71,8 @@ export class UserService {
   }) {
     if (data.username) {
       const isAvailable = await this.checkUsername(data.username);
-      // Retrieve the current profile to check if it's the user's current username
       const profile = await prisma.profile.findUnique({ where: { userId } });
-      if (!isAvailable && profile?.username !== data.username) {
+      if (!isAvailable && profile?.username?.toLowerCase() !== data.username.toLowerCase()) {
         throw new Error('Username is not available or contains invalid characters.');
       }
     }
@@ -103,7 +102,8 @@ export class UserService {
     const exists = await prisma.profile.findFirst({
       where: {
         username: {
-          equals: username
+          equals: username,
+          mode: 'insensitive'
         }
       }
     });

@@ -1101,7 +1101,7 @@ export class AuthController {
         });
       }
 
-      const existing = await prisma.user.findUnique({
+      const existing = await prisma.profile.findUnique({
         where: { username: username.toLowerCase() },
         select: { id: true },
       });
