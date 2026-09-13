@@ -95,6 +95,7 @@ export class AuthService {
           settings: {
             create: {},
           },
+        },
         include: {
           profile: true,
           settings: true,
