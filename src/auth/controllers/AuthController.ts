@@ -68,13 +68,18 @@ export class AuthController {
         req,
       });
       await metricsService.incrementMetric('otp_generated');
-      logger.info({ action: LogAction.OTP_SENT, email: cleanEmail || undefined, message: 'OTP sent' });
+      logger.info({ action: LogAction.OTP_SENT, message: 'OTP sent' });
 
-      const isDev = process.env.NODE_ENV !== 'production';
+      const payload = otpUtil.otpResponsePayload(result.devCode);
+      // #region agent log
+      try {
+        require('fs').appendFileSync(require('path').join(__dirname, '../../../../debug-765cd7.log'), JSON.stringify({sessionId:'765cd7',hypothesisId:'A',runId:'post-fix',location:'AuthController.ts:sendEmailOtp',message:'otp http payload',data:{nodeEnv:process.env.NODE_ENV,includesDevCode:!!payload?.devCode,channel:'email'},timestamp:Date.now()})+'\n');
+      } catch (_) {}
+      // #endregion
       return res.status(200).json({
         success: true,
         message: `OTP sent to ${cleanEmail}`,
-        data: (isDev || result.devCode) ? { devCode: result.devCode || code, devNote: 'Development mode active or fallback.' } : null,
+        data: payload,
       });
     } catch (e: any) {
       logger.error({ err: e, message: `Send email OTP error: ${e.message}` });
@@ -146,13 +151,18 @@ export class AuthController {
         status: 'MOBILE_OTP_DISPATCHED',
       });
       await metricsService.incrementMetric('otp_generated');
-      logger.info({ action: LogAction.OTP_SENT, mobile: cleanMobile || undefined, message: 'OTP sent' });
+      logger.info({ action: LogAction.OTP_SENT, message: 'OTP sent' });
 
-      const isDev = process.env.NODE_ENV !== 'production';
+      const payload = otpUtil.otpResponsePayload(result.devCode);
+      // #region agent log
+      try {
+        require('fs').appendFileSync(require('path').join(__dirname, '../../../../debug-765cd7.log'), JSON.stringify({sessionId:'765cd7',hypothesisId:'A',runId:'post-fix',location:'AuthController.ts:sendMobileOtp',message:'otp http payload',data:{nodeEnv:process.env.NODE_ENV,includesDevCode:!!payload?.devCode,channel:'mobile'},timestamp:Date.now()})+'\n');
+      } catch (_) {}
+      // #endregion
       return res.status(200).json({
         success: true,
         message: `OTP sent to ${cleanMobile}`,
-        data: (isDev || result.devCode) ? { devCode: result.devCode || code, devNote: 'Development mode active or fallback.' } : null,
+        data: payload,
       });
     } catch (e: any) {
       logger.error({ err: e, message: `Send mobile OTP error: ${e.message}` });
@@ -680,13 +690,13 @@ export class AuthController {
         otpResult = await otpUtil.sendOtpViaSms(contact!, code);
       }
 
-      const isDev = process.env.NODE_ENV !== 'production';
+      const otpPayload = otpUtil.otpResponsePayload(otpResult.devCode);
       return res.status(202).json({
         success: true,
         requireOtp: true,
         registrationId: newRegistrationId,
         message: `OTP sent to ${contact}`,
-        data: (isDev || otpResult.devCode) ? { devCode: otpResult.devCode || code, devNote: 'Development mode active or fallback.' } : null,
+        data: otpPayload,
       });
 
 
@@ -800,9 +810,16 @@ export class AuthController {
           refreshToken: result.refreshToken,
         },
       });
-    } catch (e: any) {
-      logger.error({ err: e, message: `Login error: ${e.message}` });
-      return res.status(400).json({ success: false, code: 'LOGIN_FAILED', message: e.message });
+    } catch (error: any) {
+      logger.error({ err: error, message: `Login error: ${error?.message}` });
+      
+      let safeMessage = error?.message || 'An unexpected error occurred.';
+      if (typeof safeMessage === 'string' && (safeMessage.includes('prisma') || safeMessage.includes('ENOTFOUND') || safeMessage.includes('ECONNREFUSED') || safeMessage.includes('database') || safeMessage.includes('PrismaClient'))) {
+        safeMessage = 'Unable to connect right now. Please try again.';
+        return res.status(503).json({ success: false, code: 'SERVICE_UNAVAILABLE', message: safeMessage });
+      }
+      
+      return res.status(400).json({ success: false, code: 'LOGIN_FAILED', message: safeMessage });
     }
   }
 
@@ -838,11 +855,11 @@ export class AuthController {
         result = await otpUtil.sendOtpViaSms(contact, code);
       }
 
-      const isDev = process.env.NODE_ENV !== 'production';
+      const payload = otpUtil.otpResponsePayload(result.devCode);
       return res.status(200).json({
         success: true,
         message: `OTP sent successfully.`,
-        data: (isDev || result.devCode) ? { devCode: result.devCode || code } : null,
+        data: payload,
       });
     } catch (e: any) {
       return res.status(400).json({ success: false, message: e.message });
@@ -920,21 +937,28 @@ export class AuthController {
             message: "Your Google account's email address is not verified. Please verify it with Google and try again.",
           });
         }
+      } else if (env.NODE_ENV === 'production') {
+        return res.status(503).json({
+          success: false,
+          code: 'GOOGLE_NOT_CONFIGURED',
+          message: 'Google Sign-In is not configured on this server.',
+        });
       } else {
-        // ── Dev bypass: GOOGLE_CLIENT_ID is not configured ────────────────────
-        // Log a WARN on every hit so this state is impossible to miss in logs.
+        // ── Dev/test bypass only ──────────────────────────────────────────────
         logger.warn(
-          '⚠️  GOOGLE_CLIENT_ID is not set — /auth/google is running in MOCK mode. ' +
-          'This MUST NOT reach production. Set GOOGLE_CLIENT_ID in your environment.'
+          'GOOGLE_CLIENT_ID is not set — /auth/google is running in MOCK mode (non-production only).'
         );
-        // Use a deterministic mock payload derived from the submitted token string
-        // so development flows still exercise the user-create/lookup paths.
         googleSub     = `mock_sub_${idToken}`;
         email         = idToken.includes('@') ? idToken.toLowerCase().trim() : 'mock_google@example.com';
         name          = email.split('@')[0];
         picture       = 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde';
         emailVerified = true;
       }
+      // #region agent log
+      try {
+        require('fs').appendFileSync(require('path').join(__dirname, '../../../../debug-765cd7.log'), JSON.stringify({sessionId:'765cd7',hypothesisId:'C',runId:'post-fix',location:'AuthController.ts:google',message:'google auth path',data:{nodeEnv:env.NODE_ENV,googleConfigured:Boolean(env.GOOGLE_CLIENT_ID),usedMock:!(googleOAuth2Client && env.GOOGLE_CLIENT_ID)},timestamp:Date.now()})+'\n');
+      } catch (_) {}
+      // #endregion
       // ────────────────────────────────────────────────────────────────────────
 
       const bcrypt = require('bcryptjs');
@@ -1115,11 +1139,11 @@ export class AuthController {
         result = await otpUtil.sendOtpViaSms(contact, code);
       }
 
-      const isDev = process.env.NODE_ENV !== 'production';
+      const payload = otpUtil.otpResponsePayload(result.devCode);
       return res.status(200).json({
         success: true,
         message: `Reset OTP sent successfully.`,
-        data: (isDev || result.devCode) ? { devCode: result.devCode || code } : null,
+        data: payload,
       });
     } catch (e: any) {
       return res.status(400).json({ success: false, message: e.message });

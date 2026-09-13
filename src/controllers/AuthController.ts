@@ -648,7 +648,12 @@ export class AuthController {
         data: result,
       });
     } catch (e: any) {
-      return res.status(400).json({ success: false, code: 'LOGIN_FAILED', message: e.message });
+      let safeMessage = e?.message || 'An unexpected error occurred.';
+      if (typeof safeMessage === 'string' && (safeMessage.includes('prisma') || safeMessage.includes('ENOTFOUND') || safeMessage.includes('ECONNREFUSED') || safeMessage.includes('database') || safeMessage.includes('PrismaClient'))) {
+        safeMessage = 'Unable to connect right now. Please try again.';
+        return res.status(503).json({ success: false, code: 'SERVICE_UNAVAILABLE', message: safeMessage });
+      }
+      return res.status(400).json({ success: false, code: 'LOGIN_FAILED', message: safeMessage });
     }
   }
 

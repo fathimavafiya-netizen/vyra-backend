@@ -5,6 +5,9 @@ import logger from './logger';
 import bcrypt from 'bcryptjs';
 import { randomInt } from 'crypto';
 import nodemailer from 'nodemailer';
+import { otpResponsePayload } from './otpResponsePayload';
+
+export { otpResponsePayload };
 
 const emailProvider = process.env.EMAIL_PROVIDER || 'resend'; // 'resend' or 'gmail'
 
@@ -25,6 +28,7 @@ const twilioPhone = process.env.TWILIO_PHONE_NUMBER;
 const twilioClient = accountSid && authToken ? twilio(accountSid, authToken) : null;
 
 const isDev = process.env.NODE_ENV !== 'production';
+const isLocalDev = process.env.NODE_ENV === 'development';
 
 // ─── OTP GENERATION ───
 export const generateOtp = (): string => {
@@ -206,14 +210,14 @@ export const verifyOtpFromDB = async (
 
 // ─── SEND EMAIL OTP via RESEND ───
 export const sendOtpViaEmail = async (email: string, code: string): Promise<{ success: boolean; devCode?: string }> => {
-  logger.info(`\n==========================================`);
-  logger.info(`📧 EMAIL OTP for [${email}] → CODE: ${code}`);
-  logger.info(`==========================================\n`);
+  logger.info('EMAIL OTP dispatched');
 
   if (emailProvider === 'gmail') {
     if (!process.env.SMTP_USER || !process.env.SMTP_APP_PASSWORD) {
-      logger.warn('⚠️ SMTP_USER or SMTP_APP_PASSWORD missing. OTP only shown in console.');
-      if (isDev) return { success: true, devCode: code };
+      if (isLocalDev) {
+        logger.warn('⚠️ SMTP_USER or SMTP_APP_PASSWORD missing. OTP only returned via devCode.');
+        return { success: true, devCode: code };
+      }
       throw new Error('Email delivery service is not configured.');
     }
 
@@ -237,17 +241,21 @@ export const sendOtpViaEmail = async (email: string, code: string): Promise<{ su
         `,
       });
       logger.info(`📧 [EMAIL SENT] OTP delivered to ${email} via Gmail SMTP.`);
-      return { success: true, devCode: code };
+      return { success: true, devCode: isLocalDev ? code : undefined };
     } catch (err: any) {
       logger.error(`❌ Failed to send email OTP via Gmail SMTP: ${err.message}`);
-      return { success: true, devCode: code };
+      if (isLocalDev) return { success: true, devCode: code };
+      throw new Error('Failed to deliver email OTP.');
     }
   }
 
   // Resend Fallback
   if (!process.env.RESEND_API_KEY) {
-    logger.warn('⚠️ RESEND_API_KEY missing. OTP only shown in console.');
-    return { success: true, devCode: code };
+    if (isLocalDev) {
+      logger.warn('⚠️ RESEND_API_KEY missing. OTP only returned via devCode.');
+      return { success: true, devCode: code };
+    }
+    throw new Error('Email delivery service is not configured.');
   }
 
   try {
@@ -272,29 +280,32 @@ export const sendOtpViaEmail = async (email: string, code: string): Promise<{ su
 
     if (error) {
       logger.error(`❌ Resend error: ${JSON.stringify(error)}`);
-      return { success: true, devCode: code };
+      if (isLocalDev) return { success: true, devCode: code };
+      throw new Error('Failed to deliver email OTP.');
     }
 
     logger.info(`📧 [EMAIL SENT] OTP delivered to ${email} via Resend. ID: ${data?.id}`);
-    return { success: true, devCode: code };
+    return { success: true, devCode: isLocalDev ? code : undefined };
   } catch (err: any) {
     logger.error(`❌ Failed to send email OTP: ${err.message}`);
-    return { success: true, devCode: code };
+    if (isLocalDev) return { success: true, devCode: code };
+    throw new Error('Failed to deliver email OTP.');
   }
 };
 
 // ─── SEND SMS OTP via FAST2SMS or TWILIO ───
 export const sendOtpViaSms = async (mobile: string, code: string): Promise<{ success: boolean; devCode?: string }> => {
-  logger.info(`\n==========================================`);
-  logger.info(`📲 MOBILE OTP for [${mobile}] → CODE: ${code}`);
-  logger.info(`==========================================\n`);
+  logger.info('MOBILE OTP dispatched');
 
   const isUsaNumber = mobile.startsWith('+1');
 
   if (isUsaNumber) {
     if (!twilioClient || !twilioPhone) {
-      logger.warn('⚠️ Twilio config missing. Twilio SMS skipped.');
-      return { success: true, devCode: code };
+      if (isLocalDev) {
+        logger.warn('⚠️ Twilio config missing. SMS OTP only returned via devCode.');
+        return { success: true, devCode: code };
+      }
+      throw new Error('SMS delivery service is not configured.');
     }
 
     try {
@@ -304,16 +315,20 @@ export const sendOtpViaSms = async (mobile: string, code: string): Promise<{ suc
         to: mobile,
       });
       logger.info(`📲 [TWILIO SMS SENT] SID: ${message.sid}`);
-      return { success: true, devCode: code };
+      return { success: true, devCode: isLocalDev ? code : undefined };
     } catch (err: any) {
       logger.error(`❌ Twilio SMS Error: ${err.message}`);
-      return { success: true, devCode: code };
+      if (isLocalDev) return { success: true, devCode: code };
+      throw new Error('Failed to deliver SMS OTP.');
     }
   } else {
     // International Fallback / FAST2SMS
     if (!process.env.FAST2SMS_API_KEY) {
-      logger.warn('⚠️ FAST2SMS_API_KEY missing. SMS skipped.');
-      return { success: true, devCode: code };
+      if (isLocalDev) {
+        logger.warn('⚠️ FAST2SMS_API_KEY missing. SMS OTP only returned via devCode.');
+        return { success: true, devCode: code };
+      }
+      throw new Error('SMS delivery service is not configured.');
     }
 
     try {
@@ -333,14 +348,16 @@ export const sendOtpViaSms = async (mobile: string, code: string): Promise<{ suc
       const data = await response.json() as any;
       if (!data.return) {
         logger.error(`❌ Fast2SMS Error: ${data.message}`);
-        return { success: true, devCode: code };
+        if (isLocalDev) return { success: true, devCode: code };
+        throw new Error('Failed to deliver SMS OTP via Fast2SMS.');
       }
       
       logger.info(`📲 [FAST2SMS SENT] Request ID: ${data.request_id}`);
-      return { success: true, devCode: code };
+      return { success: true, devCode: isLocalDev ? code : undefined };
     } catch (err: any) {
       logger.error(`❌ Failed to send SMS: ${err.message}`);
-      return { success: true, devCode: code };
+      if (isLocalDev) return { success: true, devCode: code };
+      throw new Error('Failed to deliver SMS OTP.');
     }
   }
 };
@@ -351,4 +368,5 @@ export default {
   verifyOtpFromDB,
   sendOtpViaEmail,
   sendOtpViaSms,
+  otpResponsePayload,
 };
